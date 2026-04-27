@@ -1,0 +1,35 @@
+__pycache__/
+*.py[cod]
+*.sqlite3
+
+# Entorno virtual
+.venv/
+venv/
+env/
+
+# Variables de entorno (¡nunca al repo!)
+.env
+.env.local
+.env.*.local
+
+# IDEs
+.idea/
+.vscode/
+
+# Logs y archivos temporales
+*.log
+*.pot
+*.pyc
+
+# Archivos estáticos y media
+staticfiles/
+media/
+
+# Sistema operativo
+.DS_Store
+Thumbs.db
+
+# Cobertura de tests
+.coverage
+htmlcov/
+
