@@ -2,6 +2,7 @@ from django.db import transaction
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters, status, viewsets
 from rest_framework.decorators import action
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from .models import Gasto, Legalizacion
@@ -25,6 +26,7 @@ class LegalizacionViewSet(viewsets.ModelViewSet):
 
     queryset = Legalizacion.objects.all().prefetch_related("gastos")
     serializer_class = LegalizacionSerializer
+    permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ["estado", "elaboro", "aprobado_por", "fecha_solicitud"]
     search_fields = ["numero", "elaboro__username", "aprobado_por__username"]
@@ -91,6 +93,7 @@ class GastoViewSet(viewsets.ModelViewSet):
 
     queryset = Gasto.objects.select_related("legalizacion").all()
     serializer_class = GastoSerializer
+    permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ["legalizacion", "centro_costos", "fecha", "cedula_nit"]
     search_fields = ["cliente_proveedor", "numero_factura", "cedula_nit"]
