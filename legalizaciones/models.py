@@ -80,10 +80,8 @@ class Legalizacion(models.Model):
         return self.saldo
 
     def save(self, *args, **kwargs):
-        is_new = self._state.adding
         super().save(*args, **kwargs)
-        if not is_new:
-            self.recalcular_saldo(save=True)
+        self.recalcular_saldo(save=True)
 
 
 class Gasto(models.Model):

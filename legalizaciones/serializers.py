@@ -68,7 +68,7 @@ class LegalizacionSerializer(serializers.ModelSerializer):
             "creado_en",
             "actualizado_en",
         ]
-        read_only_fields = ["numero", "saldo", "creado_en", "actualizado_en"]
+        read_only_fields = ["numero", "saldo", "elaboro", "aprobado_por", "creado_en", "actualizado_en"]
 
     @transaction.atomic
     def create(self, validated_data):
