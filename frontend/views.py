@@ -168,7 +168,9 @@ def legalizacion_detail(request, pk):
         return redirect("legalizacion_list")
 
     gastos = leg.gastos.all()
-    total_gastos = gastos.aggregate(t=Sum("valor"))["t"] or Decimal("0")
+    total_gastos = (
+        gastos.filter(rechazado=False).aggregate(t=Sum("valor"))["t"] or Decimal("0")
+    )
 
     context = {
         "leg": leg,
@@ -269,3 +271,56 @@ def legalizacion_enviar(request, pk):
         leg.save()
         messages.success(request, "Legalización enviada para aprobación.")
     return redirect("legalizacion_detail", pk=pk)
+
+
+@login_required
+@require_POST
+def gasto_rechazar(request, pk):
+    """Aprobador rechaza un gasto específico con un motivo obligatorio."""
+    user = request.user
+    es_aprobador = user.is_superuser or user.groups.filter(name="Aprobadores").exists()
+    if not es_aprobador:
+        messages.error(request, "No tienes permiso para rechazar gastos.")
+        return redirect("legalizacion_list")
+
+    gasto = get_object_or_404(Gasto, pk=pk)
+    leg = gasto.legalizacion
+
+    if leg.estado != Legalizacion.Estado.ENVIADO:
+        messages.error(request, "Solo se pueden rechazar gastos de legalizaciones enviadas.")
+        return redirect("legalizacion_detail", pk=leg.pk)
+
+    motivo = request.POST.get("motivo", "").strip()
+    if not motivo:
+        messages.error(request, "Debes ingresar el motivo del rechazo.")
+        return redirect("legalizacion_detail", pk=leg.pk)
+
+    gasto.rechazado = True
+    gasto.motivo_rechazo = motivo
+    gasto.save()
+    leg.recalcular_saldo(save=True)
+
+    messages.warning(request, f"Gasto '{gasto.cliente_proveedor}' rechazado.")
+    return redirect("legalizacion_detail", pk=leg.pk)
+
+
+@login_required
+@require_POST
+def gasto_restaurar(request, pk):
+    """Aprobador restaura un gasto previamente rechazado."""
+    user = request.user
+    es_aprobador = user.is_superuser or user.groups.filter(name="Aprobadores").exists()
+    if not es_aprobador:
+        messages.error(request, "No tienes permiso para restaurar gastos.")
+        return redirect("legalizacion_list")
+
+    gasto = get_object_or_404(Gasto, pk=pk)
+    leg = gasto.legalizacion
+
+    gasto.rechazado = False
+    gasto.motivo_rechazo = None
+    gasto.save()
+    leg.recalcular_saldo(save=True)
+
+    messages.success(request, f"Gasto '{gasto.cliente_proveedor}' restaurado.")
+    return redirect("legalizacion_detail", pk=leg.pk)

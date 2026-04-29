@@ -138,7 +138,11 @@ class Legalizacion(models.Model):
         return f"{prefijo}{n:03d}"
 
     def recalcular_saldo(self, save: bool = True) -> Decimal:
-        total_gastos = self.gastos.aggregate(total=Sum("valor"))["total"] or Decimal("0.00")
+        # Solo cuenta gastos NO rechazados
+        total_gastos = (
+            self.gastos.filter(rechazado=False).aggregate(total=Sum("valor"))["total"]
+            or Decimal("0.00")
+        )
         self.saldo = (self.monto_aprobado or Decimal("0.00")) - total_gastos
         if save:
             Legalizacion.objects.filter(pk=self.pk).update(saldo=self.saldo)
@@ -203,6 +207,15 @@ class Gasto(models.Model):
         null=True,
         blank=True,
         verbose_name="Observaciones",
+    )
+    rechazado = models.BooleanField(
+        default=False,
+        verbose_name="Rechazado",
+    )
+    motivo_rechazo = models.TextField(
+        null=True,
+        blank=True,
+        verbose_name="Motivo de rechazo",
     )
     creado_en = models.DateTimeField(auto_now_add=True)
     actualizado_en = models.DateTimeField(auto_now=True)
