@@ -12,7 +12,7 @@
     <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
     </svg>
-    <span class="text-slate-600 font-mono text-xs">{{ leg.numero|truncatechars:16 }}…</span>
+    <span class="text-slate-600 font-semibold text-sm">{{ leg.codigo }}</span>
   </nav>
 
   <!-- Header card -->
@@ -23,7 +23,12 @@
           {{ leg.elaboro.first_name|first|upper }}{{ leg.elaboro.last_name|first|upper }}
         </div>
         <div>
-          <h2 class="text-lg font-bold text-slate-900">{{ leg.elaboro.get_full_name|default:leg.elaboro.username }}</h2>
+          <div class="flex items-center gap-2 flex-wrap">
+            <h2 class="text-lg font-bold text-slate-900">{{ leg.elaboro.get_full_name|default:leg.elaboro.username }}</h2>
+            <span class="px-2 py-0.5 rounded-md bg-indigo-100 text-indigo-700 text-xs font-mono font-semibold tracking-wide">
+              {{ leg.codigo }}
+            </span>
+          </div>
           <p class="text-sm text-slate-400 mt-0.5">Solicitud: {{ leg.fecha_solicitud|date:"d \d\e F \d\e Y" }}</p>
 
           {% if es_aprobador %}

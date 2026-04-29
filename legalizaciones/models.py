@@ -38,6 +38,14 @@ class Legalizacion(models.Model):
         editable=False,
         verbose_name="Número",
     )
+    codigo = models.CharField(
+        max_length=20,
+        unique=True,
+        editable=False,
+        blank=True,
+        verbose_name="Código",
+        help_text="Código legible auto-generado. Formato: LC-YYYY-NNN",
+    )
     monto_aprobado = models.DecimalField(
         max_digits=14,
         decimal_places=2,
@@ -102,7 +110,32 @@ class Legalizacion(models.Model):
             raise ValidationError(errors)
 
     def __str__(self):
-        return f"Legalización {self.numero} ({self.get_estado_display()})"
+        return f"Legalización {self.codigo or self.numero} ({self.get_estado_display()})"
+
+    @classmethod
+    def _generar_codigo(cls) -> str:
+        """
+        Genera el siguiente código correlativo anual.
+        Formato: LC-YYYY-NNN  (ej: LC-2025-001)
+        El contador se reinicia cada año.
+        """
+        from django.utils import timezone
+        anio = timezone.now().year
+        prefijo = f"LC-{anio}-"
+        ultimo = (
+            cls.objects.filter(codigo__startswith=prefijo)
+            .order_by("codigo")
+            .values_list("codigo", flat=True)
+            .last()
+        )
+        if ultimo:
+            try:
+                n = int(ultimo.split("-")[-1]) + 1
+            except (ValueError, IndexError):
+                n = 1
+        else:
+            n = 1
+        return f"{prefijo}{n:03d}"
 
     def recalcular_saldo(self, save: bool = True) -> Decimal:
         total_gastos = self.gastos.aggregate(total=Sum("valor"))["total"] or Decimal("0.00")
@@ -112,6 +145,8 @@ class Legalizacion(models.Model):
         return self.saldo
 
     def save(self, *args, **kwargs):
+        if not self.codigo:
+            self.codigo = self._generar_codigo()
         super().save(*args, **kwargs)
         self.recalcular_saldo(save=True)
 
