@@ -159,15 +159,13 @@
             <th class="text-center px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wider">Soporte</th>
           </tr>
         </thead>
-        <tbody class="divide-y divide-slate-50">
+        <tbody>
           {% for gasto in gastos %}
-          <tr class="hover:bg-slate-50 transition-colors">
+          <!-- Fila principal del gasto -->
+          <tr class="border-t border-slate-100 first:border-t-0 hover:bg-slate-50/70 transition-colors">
             <td class="px-4 py-3.5 text-slate-600 whitespace-nowrap">{{ gasto.fecha|date:"d/m/Y" }}</td>
             <td class="px-4 py-3.5">
               <p class="font-medium text-slate-800">{{ gasto.cliente_proveedor }}</p>
-              {% if gasto.observaciones %}
-              <p class="text-xs text-slate-400 mt-0.5">{{ gasto.observaciones }}</p>
-              {% endif %}
             </td>
             <td class="px-4 py-3.5 text-slate-500 font-mono text-xs whitespace-nowrap">{{ gasto.cedula_nit }}</td>
             <td class="px-4 py-3.5 text-slate-500 whitespace-nowrap">{{ gasto.numero_factura }}</td>
@@ -204,6 +202,20 @@
               {% endif %}
             </td>
           </tr>
+          <!-- Sub-fila de observaciones (solo si existe) -->
+          {% if gasto.observaciones %}
+          <tr class="bg-amber-50/50">
+            <td colspan="9" class="px-4 pb-3 pt-0">
+              <div class="flex items-start gap-2 ml-1 pl-3 border-l-2 border-amber-300">
+                <svg class="w-3.5 h-3.5 text-amber-500 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z"/>
+                </svg>
+                <p class="text-xs text-amber-900 leading-relaxed">{{ gasto.observaciones }}</p>
+              </div>
+            </td>
+          </tr>
+          {% endif %}
           {% endfor %}
         </tbody>
         <tfoot>
