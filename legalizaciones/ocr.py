@@ -1,6 +1,16 @@
 """
 Servicio de OCR para extracción automática de datos de facturas colombianas.
 Soporta PDFs con texto embebido (pdfplumber) e imágenes (pytesseract).
+
+Estrategia de parsing:
+- Pre-procesado: elimina caracteres cuadruplicados de PDFs de operadores (Claro, etc.)
+- NIT: primera ocurrencia de 'NIT XXXXXXXXX-X' — soporta guiones y puntos de miles
+- Razón social: línea inmediatamente anterior al NIT del emisor
+- Número factura: 'No. FExxxx', 'FExxxx', 'FVxxxx', 'FACTURA ... 3 - 292562732', etc.
+- Fecha: DD/MM/YYYY o 'Mmm DD/YY' del campo 'Fecha del documento'
+- Valor base: ÚLTIMO subtotal (post-descuento) o única aparición
+- IVA: línea 'IVA (...%) $xxx' — cualquier porcentaje DIAN
+- Total: 'Total a pagar / Total factura / TOTAL A PAGAR' — nunca la cabecera de tabla
 """
 import re
 from datetime import datetime
@@ -15,7 +25,7 @@ def _texto_desde_pdf(file_obj):
         with pdfplumber.open(file_obj) as pdf:
             partes = [p.extract_text() or "" for p in pdf.pages]
         return "\n".join(partes)
-    except Exception as e:
+    except Exception:
         return ""
 
 
@@ -25,7 +35,6 @@ def _texto_desde_imagen(file_obj):
         from PIL import Image, ImageFilter, ImageEnhance
         from django.conf import settings
 
-        # Configurar ejecutable y carpeta de idiomas
         cmd = getattr(settings, "TESSERACT_CMD", None)
         data = getattr(settings, "TESSERACT_DATA", None)
         if cmd:
@@ -37,11 +46,9 @@ def _texto_desde_imagen(file_obj):
 
         file_obj.seek(0)
         img = Image.open(file_obj)
-
-        # Pre-procesado para mejorar la legibilidad
-        img = img.convert("L")                          # escala de grises
-        img = ImageEnhance.Contrast(img).enhance(2.0)   # aumentar contraste
-        img = img.filter(ImageFilter.SHARPEN)            # nitidez
+        img = img.convert("L")
+        img = ImageEnhance.Contrast(img).enhance(2.0)
+        img = img.filter(ImageFilter.SHARPEN)
 
         return pytesseract.image_to_string(img, lang="spa+eng", config=config)
     except ImportError:
@@ -57,82 +64,240 @@ def extraer_texto(file_obj, content_type: str) -> str:
     elif any(x in ct for x in ("image", "jpg", "jpeg", "png", "tiff", "webp")):
         texto = _texto_desde_imagen(file_obj)
     else:
-        # Intentar PDF primero, luego imagen
         texto = _texto_desde_pdf(file_obj)
         if not texto.strip():
             texto = _texto_desde_imagen(file_obj)
     return texto
 
 
-# ── Parser de campos ──────────────────────────────────────────────────────────
+# ── Pre-procesado de texto ────────────────────────────────────────────────────
+
+# Meses abreviados en español (facturas de operadores telefónicos)
+_MESES_ES = {
+    "ene": 1, "feb": 2, "mar": 3, "abr": 4, "may": 5, "jun": 6,
+    "jul": 7, "ago": 8, "sep": 9, "oct": 10, "nov": 11, "dic": 12,
+}
+
+
+def _normalizar_texto(texto: str) -> str:
+    """
+    Limpia artefactos comunes de PDFs mal generados:
+    1. Caracteres cuadruplicados: 'CCCCUUUUDDDDAAAA' → 'CIUDAD'
+       (PDFs de Claro/Comcel renderizan cada letra 4 veces)
+    2. Colapsa líneas en blanco múltiples
+    """
+    # Paso 1: reducir letras, dígitos y signos repetidos 4 veces seguidas
+    normalizado = re.sub(r'([A-ZÁÉÍÓÚÑa-záéíóúñ0-9:.\-])\1{3}', r'\1', texto)
+    # Paso 2: colapsar más de 2 saltos de línea consecutivos
+    normalizado = re.sub(r'\n{3,}', '\n\n', normalizado)
+    return normalizado
+
+
+# ── Utilidades numéricas ──────────────────────────────────────────────────────
 
 def _limpiar_numero(valor: str) -> float | None:
-    """Convierte '1.234.567,89' o '1234567.89' a float."""
-    v = valor.strip()
-    # Formato colombiano: puntos como miles, coma como decimal
+    """
+    Convierte número colombiano/americano a float.
+    Soporta: '7.618.727,26', '252,365.00', '1234567.89', '$1.234,56'
+    """
+    v = valor.strip().lstrip("$").strip()
+    # Formato colombiano: puntos miles + coma decimal → 7.618.727,26
     if re.search(r"\d\.\d{3}", v) and "," in v:
         v = v.replace(".", "").replace(",", ".")
+    # Solo puntos de miles (sin parte decimal explícita): 7.618.727
     elif re.search(r"\d\.\d{3}", v):
         v = v.replace(".", "")
-    else:
+    # Coma como miles (formato americano): 252,365.00 → quitar coma
+    elif "," in v and "." in v:
+        v = v.replace(",", "")
+    # Coma como decimal única: 805,939 → 805.939
+    elif "," in v:
         v = v.replace(",", ".")
     v = re.sub(r"[^\d.]", "", v)
     try:
-        return float(v)
+        return float(v) if v else None
     except ValueError:
         return None
 
 
+def _es_nombre_empresa(linea: str) -> bool:
+    """
+    Heurística: ¿la línea parece ser un nombre de empresa?
+    Condiciones: longitud 5–80, no empieza con dígito, sin URLs/emails,
+    no es una dirección/teléfono, contiene al menos una letra.
+    """
+    l = linea.strip()
+    if len(l) < 5 or len(l) > 80:
+        return False
+    if re.match(r"^\d", l):
+        return False
+    if re.search(r"[@/\\]", l):          # email, URL o path
+        return False
+    if re.match(
+        r"^(calle|cra|carrera|av\.|avenida|tel|cel|\+57|ref|fecha|total|sub|iva|pago)",
+        l, re.IGNORECASE
+    ):
+        return False
+    if not re.search(r"[A-ZÁÉÍÓÚÑa-záéíóúñ]", l):
+        return False
+    return True
+
+
+# ── Limpieza de NIT ───────────────────────────────────────────────────────────
+
+def _limpiar_nit(raw: str) -> str:
+    """Elimina puntos de miles del NIT: '800.153.993-7' → '800153993-7'"""
+    partes = raw.replace("–", "-").split("-")
+    if len(partes) == 2:
+        numero = re.sub(r"[^\d]", "", partes[0])
+        digito = partes[1].strip()
+        return f"{numero}-{digito}"
+    return re.sub(r"[^\d\-]", "", raw)
+
+
+# ── Parser principal ──────────────────────────────────────────────────────────
+
 def parsear_factura(texto: str) -> dict:
     resultado = {}
-    t = texto
+    # Normalizar antes de parsear (colapsa cuadruplicados, etc.)
+    t = _normalizar_texto(texto)
 
-    # ── NIT / Cédula ─────────────────────────────────────────────────────────
-    nit = re.search(
-        r'\b(\d{6,10})\s*[-–]\s*(\d)\b',
-        t
-    )
-    if nit:
-        resultado["cedula_nit"] = f"{nit.group(1)}-{nit.group(2)}"
-    else:
-        nit2 = re.search(
-            r'(?:nit|n\.i\.t\.?|c[eé]dula)\s*[:#]?\s*(\d[\d\s\-\.]{5,14}\d)',
-            t, re.IGNORECASE
-        )
-        if nit2:
-            resultado["cedula_nit"] = re.sub(r'\s', '', nit2.group(1))
-
-    # ── Número de factura ─────────────────────────────────────────────────────
-    fact = re.search(
-        r'(?:factura|fact\.?|fv\s*n[oú°]?|fe\s*n[oú°]?|n[oú°]\s+factura|invoice)\s*[#:\s]*([A-Z0-9]{1,5}[-\s]?\d{2,10})',
+    # ── 1. NIT del emisor ────────────────────────────────────────────────────
+    # Soporta: 'NIT 901478875-8', 'NIT 800.153.993-7', 'NIT: 900750787-1'
+    nit_m = re.search(
+        r'\bNIT\s*:?\s*([\d.]{7,15}[-–]\d)\b',
         t, re.IGNORECASE
     )
-    if fact:
-        resultado["numero_factura"] = fact.group(1).strip()
+    if nit_m:
+        resultado["cedula_nit"] = _limpiar_nit(nit_m.group(1))
+    else:
+        # Fallback: patrón puro sin etiqueta NIT
+        nit_raw = re.search(r'\b(\d{7,10})\s*[-–]\s*(\d)\b', t)
+        if nit_raw:
+            resultado["cedula_nit"] = f"{nit_raw.group(1)}-{nit_raw.group(2)}"
 
-    # ── Fecha ─────────────────────────────────────────────────────────────────
-    # Formato: DD/MM/YYYY, DD-MM-YYYY, DD.MM.YYYY
-    fecha = re.search(r'\b(\d{1,2})[/\-\.](\d{1,2})[/\-\.](\d{4})\b', t)
-    if fecha:
-        d, m, y = fecha.groups()
+    # ── 2. Razón social del emisor ───────────────────────────────────────────
+    # Línea inmediatamente anterior a la primera aparición de 'NIT XXXXXXXX-X'
+    if nit_m:
+        texto_antes = t[:nit_m.start()]
+        lineas_antes = [l.strip() for l in texto_antes.split("\n") if l.strip()]
+        for linea in reversed(lineas_antes):
+            if _es_nombre_empresa(linea):
+                # Si la línea tiene dos empresas juntas (ej: "COMCEL S.A. CLIENTE S.A.S.")
+                # extraer solo la primera, hasta el primer sufijo legal seguido de otra empresa.
+                m_split = re.search(
+                    r'^(.*?(?:S\.A\.S|LTDA|S\.A\.|SAS|CORP|INC)\.?)\s+[A-ZÁÉÍÓÚÑ]',
+                    linea, re.IGNORECASE
+                )
+                if m_split:
+                    resultado["cliente_proveedor"] = m_split.group(1).strip()
+                else:
+                    resultado["cliente_proveedor"] = linea.strip()
+                break
+
+    # Fallback: label explícito
+    if "cliente_proveedor" not in resultado:
+        prov_m = re.search(
+            r'(?:raz[oó]n\s+social|nombre\s+empresa|proveedor|expedido\s+por)\s*:?\s*'
+            r'([A-ZÁÉÍÓÚÑ][^\n\r]{3,70})',
+            t, re.IGNORECASE
+        )
+        if prov_m:
+            resultado["cliente_proveedor"] = prov_m.group(1).strip()
+
+    # ── 3. Número de factura ─────────────────────────────────────────────────
+    fact_patterns = [
+        # "No. FE3223"  /  "No FE3223"
+        r'No\.?\s+([A-Z]{1,3}\d{2,8})\b',
+        # "N° FE3223"  /  "Nº 3223"
+        r'N[°º]\s*([A-Z]{0,3}\d{2,8})\b',
+        # "FACTURA ELECTRÓNICA DE VENTA: 3 - 292562732"
+        r'FACTURA\s+ELECTR[OÓ]NICA\s+DE\s+VENTA\s*[:\s]+(\d+\s*-\s*\d+)',
+        # "FACTURA ELECTRÓNICA ... FE3223"
+        r'FACTURA\s+ELECTR[OÓ]NICA[^\n]{0,60}\b([A-Z]{1,3}\d{2,8})\b',
+        # Prefijos DIAN directos: FE, FV, FT, FC
+        r'\b(F[EVTC]\d{3,8})\b',
+        # Genérico con label
+        r'(?:factura|fact\.?|invoice)\s*(?:de\s+venta\s*)?(?:electr[oó]nica\s*)?'
+        r'[N°#nº\s]*[:\s]*([A-Z0-9]{1,5}[-]?\d{2,10})',
+    ]
+    for pat in fact_patterns:
+        m = re.search(pat, t, re.IGNORECASE)
+        if m:
+            resultado["numero_factura"] = re.sub(r'\s+', '', m.group(1)).strip()
+            break
+
+    # ── 4. Fecha del documento ───────────────────────────────────────────────
+    # Opción A: DD/MM/YYYY (formato DIAN estándar)
+    fecha_m = re.search(r'\b(\d{1,2})[/\-\.](\d{1,2})[/\-\.](\d{4})\b', t)
+    if fecha_m:
+        d, mes, y = fecha_m.groups()
         try:
-            f = datetime(int(y), int(m), int(d))
+            f = datetime(int(y), int(mes), int(d))
             resultado["fecha"] = f.strftime("%Y-%m-%d")
         except ValueError:
             pass
 
-    # ── Razón social / Proveedor ──────────────────────────────────────────────
-    prov = re.search(
-        r'(?:raz[oó]n\s+social|nombre|proveedor|empresa|expedido\s+a|facturar\s+a)\s*:?\s*([A-ZÁÉÍÓÚÑ][^\n\r]{3,60})',
+    # Opción B: "Abr 01/26" o "Abr 01/2026" (facturas de operadores)
+    if "fecha" not in resultado:
+        mes_abr = re.search(
+            r'\b([A-Za-z]{3})\s+(\d{1,2})[/\-](\d{2,4})\b', t
+        )
+        if mes_abr:
+            nombre_mes, dia, anio = mes_abr.groups()
+            num_mes = _MESES_ES.get(nombre_mes.lower())
+            if num_mes:
+                anio_int = int(anio)
+                if anio_int < 100:
+                    anio_int += 2000
+                try:
+                    f = datetime(anio_int, num_mes, int(dia))
+                    resultado["fecha"] = f.strftime("%Y-%m-%d")
+                except ValueError:
+                    pass
+
+    # Opción C: YYYY-MM-DD (metadato generación/aprobación DIAN)
+    if "fecha" not in resultado:
+        fecha_iso = re.search(r'\b(20\d{2})-(0[1-9]|1[0-2])-(\d{2})\b', t)
+        if fecha_iso:
+            resultado["fecha"] = (
+                f"{fecha_iso.group(1)}-{fecha_iso.group(2)}-{fecha_iso.group(3)}"
+            )
+
+    # ── 5. Subtotales (con o sin descuento) ──────────────────────────────────
+    # Facturas con descuento tienen DOS subtotales:
+    #   Subtotal  $7.618.727,26   ← bruto
+    #   Descuento $3.376.940,90
+    #   Subtotal  $4.241.786,36   ← base gravable  ← usamos ESTE
+    # Si hay un solo subtotal, es la base gravable.
+    # Nota: el primero puede estar en mitad de una línea (pdfplumber multi-columna);
+    # el segundo suele iniciar su propia línea. Tomamos el último valor válido.
+    subtotales_raw = re.findall(
+        r'\bSubtotal\s*\$?\s*([\d.,]+)',
         t, re.IGNORECASE
     )
-    if prov:
-        resultado["cliente_proveedor"] = prov.group(1).strip()
+    subtotales_vals = [_limpiar_numero(s) for s in subtotales_raw]
+    subtotales_vals = [v for v in subtotales_vals if v and v > 0]
 
-    # ── Valores ───────────────────────────────────────────────────────────────
-    # IVA
+    if subtotales_vals:
+        resultado["valor_base"] = subtotales_vals[-1]  # el último = post-descuento
+
+    # Fallback: etiquetas alternativas de base gravable
+    if "valor_base" not in resultado:
+        base_m = re.search(
+            r'(?:base\s+gravable|base\s+iva|valor\s+base|neto|cargos\s+del\s+mes)'
+            r'\s*[:\$]?[^\S\n]*([\d.,]+)',
+            t, re.IGNORECASE
+        )
+        if base_m:
+            v = _limpiar_numero(base_m.group(1))
+            if v and v > 0:
+                resultado["valor_base"] = v
+
+    # ── 6. IVA ───────────────────────────────────────────────────────────────
+    # Patrón DIAN: "IVA (19.00%) $805.939,41"
     iva_m = re.search(
-        r'(?:iva|impuesto)\s*(?:\(?19\s*%\)?|\(?5\s*%\)?)?\s*[:\$]?\s*([\d.,]+)',
+        r'IVA\s*\([^)]*\)\s*\$?\s*([\d.,]+)',
         t, re.IGNORECASE
     )
     if iva_m:
@@ -140,30 +305,47 @@ def parsear_factura(texto: str) -> dict:
         if v and v > 0:
             resultado["iva"] = v
 
-    # Subtotal / base gravable
-    base_m = re.search(
-        r'(?:subtotal|base\s+gravable|base\s+iva|valor\s+base|neto)\s*[:\$]?\s*([\d.,]+)',
-        t, re.IGNORECASE
-    )
-    if base_m:
-        v = _limpiar_numero(base_m.group(1))
-        if v and v > 0:
-            resultado["valor_base"] = v
+    # Fallback: "Total IVA $xxx" (facturas de operadores)
+    if "iva" not in resultado:
+        iva_fb = re.search(
+            r'(?:total\s+iva|iva\s+total|iva|impuesto\s+iva)\s*[:\$]?\s*\$?\s*([\d.,]+)',
+            t, re.IGNORECASE
+        )
+        if iva_fb:
+            v = _limpiar_numero(iva_fb.group(1))
+            if v and v > 0:
+                resultado["iva"] = v
 
-    # Total a pagar (el mayor encontrado suele ser el total)
-    totales = re.findall(
-        r'(?:total\s+a\s+pagar|total\s+factura|gran\s+total|valor\s+total|total)\s*[:\$]?\s*([\d.,]+)',
-        t, re.IGNORECASE
-    )
-    for tv in totales:
-        v = _limpiar_numero(tv)
-        if v and v > 0:
-            resultado["valor_total"] = v
+    # ── 7. Total a pagar ──────────────────────────────────────────────────────
+    # CUIDADO: pdfplumber extrae la cabecera "... Descuento Total\n1 RailClamp..."
+    # — el "Total" de la cabecera captura el "1" de la primera línea de ítems.
+    # SOLUCIÓN A: etiquetas específicas primero (total a pagar, total factura, etc.)
+    # SOLUCIÓN B: para el "Total $xxx" simple, exigir que no haya salto de línea
+    #             entre "Total" y el monto.
+    # SOLUCIÓN C: filtrar valores < 1.000 (los contadores de líneas siempre son pequeños).
+    total_patterns = [
+        # Alta prioridad — etiquetas inequívocas
+        (r'(?:total\s+a\s+pagar|total\s+factura|valor\s+a\s+pagar|gran\s+total|valor\s+total)'
+         r'[^\n$:]*\$?\s*([\d.,]+)'),
+        # "Total $5.047.725,76" — $ en la misma línea
+        r'(?:^|(?<=\n))[^\S\n]*Total[^\S\n]*\$[^\S\n]*([\d.,]+)',
+        # "Total: 5.047.725,76" — : en la misma línea
+        r'(?:^|(?<=\n))[^\S\n]*Total[^\S\n]*:[^\S\n]*([\d.,]+)',
+    ]
+    for pat in total_patterns:
+        for tv in re.findall(pat, t, re.IGNORECASE | re.MULTILINE):
+            v = _limpiar_numero(tv)
+            if v and v > 1_000:
+                resultado["valor_total"] = v
+                break
+        if "valor_total" in resultado:
             break
 
-    # Si tenemos total e IVA, inferir base
+    # ── 8. Inferencia: base desde total e IVA ────────────────────────────────
     if "valor_base" not in resultado and "valor_total" in resultado and "iva" in resultado:
-        resultado["valor_base"] = round(resultado["valor_total"] - resultado["iva"], 2)
+        inferida = round(resultado["valor_total"] - resultado["iva"], 2)
+        if inferida > 0:
+            resultado["valor_base"] = inferida
 
     return resultado
 
@@ -176,19 +358,22 @@ def analizar_archivo(file_obj, content_type: str) -> dict:
     if not texto.strip():
         return {
             "ok": False,
-            "mensaje": "No se pudo extraer texto del archivo. "
-                       "Para imágenes, instala Tesseract OCR. "
-                       "Para PDFs, el documento debe tener texto seleccionable.",
+            "mensaje": (
+                "No se pudo extraer texto del archivo. "
+                "Para imágenes, verifica que Tesseract OCR esté instalado. "
+                "Para PDFs, el documento debe tener texto seleccionable."
+            ),
             "campos": {},
         }
 
     campos = parsear_factura(texto)
-    confianza = "alta" if len(campos) >= 4 else ("media" if len(campos) >= 2 else "baja")
+    n = len(campos)
+    confianza = "alta" if n >= 5 else ("media" if n >= 3 else "baja")
 
     return {
         "ok": True,
         "confianza": confianza,
-        "campos_detectados": len(campos),
+        "campos_detectados": n,
         "campos": campos,
-        "texto_raw": texto[:800],
+        "texto_raw": texto[:1200],
     }
