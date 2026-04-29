@@ -100,9 +100,19 @@
       <svg class="w-6 h-6 text-amber-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
       </svg>
-      <p class="text-sm font-medium text-amber-800">Esta legalización está pendiente de revisión.</p>
+      <div>
+        <p class="text-sm font-medium text-amber-800">Esta legalización está pendiente de revisión.</p>
+        <p class="text-xs text-amber-600 mt-0.5">Puedes aprobar, rechazar directamente, o devolver al empleado para que corrija gastos específicos.</p>
+      </div>
     </div>
-    <div class="flex items-center gap-3">
+    <div class="flex flex-wrap items-center gap-2">
+      <form method="post" action="{% url 'legalizacion_devolver' leg.pk %}">
+        {% csrf_token %}
+        <button type="submit"
+                class="px-4 py-2 bg-white border border-amber-300 text-amber-700 hover:bg-amber-50 text-sm font-semibold rounded-xl transition-colors">
+          Devolver para corrección
+        </button>
+      </form>
       <form method="post" action="{% url 'legalizacion_rechazar' leg.pk %}"
             onsubmit="return confirm('¿Seguro que deseas rechazar esta legalización?')">
         {% csrf_token %}
@@ -122,7 +132,7 @@
   </div>
   {% endif %}
 
-  <!-- Acción enviar para Empleado -->
+  <!-- Acción enviar para Empleado (BORRADOR) -->
   {% if not es_aprobador and leg.estado == 'BORRADOR' and leg.elaboro == request.user %}
   <div class="bg-blue-50 border border-blue-200 rounded-2xl p-5 flex flex-col sm:flex-row items-center justify-between gap-4">
     <div class="flex items-center gap-3">
@@ -138,6 +148,37 @@
         Enviar para Aprobación
       </button>
     </form>
+  </div>
+  {% endif %}
+
+  <!-- Panel DEVUELTO para Empleado -->
+  {% if not es_aprobador and leg.estado == 'DEVUELTO' and leg.elaboro == request.user %}
+  <div class="bg-orange-50 border border-orange-200 rounded-2xl p-5">
+    <div class="flex flex-col sm:flex-row items-start justify-between gap-4">
+      <div class="flex items-start gap-3">
+        <svg class="w-6 h-6 text-orange-500 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/>
+        </svg>
+        <div>
+          <p class="text-sm font-semibold text-orange-800">Legalización devuelta para corrección</p>
+          <p class="text-xs text-orange-600 mt-0.5">
+            El aprobador rechazó uno o más gastos. Corrígelos usando el botón
+            <span class="font-semibold">Editar</span> en la tabla y luego reenvía la legalización.
+          </p>
+          {% with gastos_rechazados=gastos|length %}
+          {% with conteo=leg.gastos.all %}
+          {% endwith %}
+          {% endwith %}
+        </div>
+      </div>
+      <form method="post" action="{% url 'legalizacion_enviar' leg.pk %}" class="shrink-0">
+        {% csrf_token %}
+        <button type="submit"
+                class="px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white text-sm font-semibold rounded-xl transition-colors whitespace-nowrap">
+          Reenviar para Aprobación
+        </button>
+      </form>
+    </div>
   </div>
   {% endif %}
 
@@ -162,7 +203,7 @@
             <th class="text-right px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wider">IVA</th>
             <th class="text-right px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wider">Total</th>
             <th class="text-center px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wider">Soporte</th>
-            {% if es_aprobador and leg.estado == 'ENVIADO' %}<th class="w-10 px-2 py-3"></th>{% endif %}
+            {% if es_aprobador and leg.estado == 'ENVIADO' or puede_editar_gastos %}<th class="w-10 px-2 py-3"></th>{% endif %}
           </tr>
         </thead>
 
@@ -249,7 +290,7 @@
               {% endif %}
             </td>
 
-            <!-- Acción rechazar / restaurar (solo aprobadores en estado ENVIADO) -->
+            <!-- Acciones de fila -->
             {% if es_aprobador and leg.estado == 'ENVIADO' %}
             <td class="px-2 py-3.5 text-center">
               {% if gasto.rechazado %}
@@ -281,13 +322,30 @@
               </button>
               {% endif %}
             </td>
+            {% elif puede_editar_gastos %}
+            <td class="px-2 py-3.5 text-center">
+              {% if gasto.rechazado %}
+              <!-- Editar gasto rechazado -->
+              <a href="{% url 'gasto_editar' gasto.pk %}"
+                 title="Editar gasto"
+                 class="inline-flex items-center justify-center w-7 h-7 rounded-lg
+                        bg-orange-50 hover:bg-orange-100 text-orange-600 transition-colors">
+                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                </svg>
+              </a>
+              {% else %}
+              <span class="text-slate-200">—</span>
+              {% endif %}
+            </td>
             {% endif %}
           </tr>
 
           <!-- Sub-fila: observaciones del empleado -->
           {% if gasto.observaciones %}
           <tr class="{% if gasto.rechazado %}bg-red-50/30{% else %}bg-amber-50/50{% endif %}">
-            <td colspan="{% if es_aprobador and leg.estado == 'ENVIADO' %}10{% else %}9{% endif %}" class="px-4 pb-2 pt-0">
+            <td colspan="{% if es_aprobador and leg.estado == 'ENVIADO' or puede_editar_gastos %}10{% else %}9{% endif %}" class="px-4 pb-2 pt-0">
               <div class="flex items-start gap-2 ml-1 pl-3 border-l-2 border-amber-300">
                 <svg class="w-3.5 h-3.5 text-amber-500 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -302,7 +360,7 @@
           <!-- Sub-fila: motivo de rechazo (si fue rechazado) -->
           {% if gasto.rechazado and gasto.motivo_rechazo %}
           <tr class="bg-red-50/60">
-            <td colspan="{% if es_aprobador and leg.estado == 'ENVIADO' %}10{% else %}9{% endif %}" class="px-4 pb-3 pt-0">
+            <td colspan="{% if es_aprobador and leg.estado == 'ENVIADO' or puede_editar_gastos %}10{% else %}9{% endif %}" class="px-4 pb-3 pt-0">
               <div class="flex items-start gap-2 ml-1 pl-3 border-l-2 border-red-300">
                 <svg class="w-3.5 h-3.5 text-red-400 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -362,7 +420,7 @@
             <td class="px-4 py-3.5 text-right text-base font-bold text-slate-900 whitespace-nowrap">
               ${{ total_gastos|cop }}
             </td>
-            <td colspan="{% if es_aprobador and leg.estado == 'ENVIADO' %}2{% else %}1{% endif %}"></td>
+            <td colspan="{% if es_aprobador and leg.estado == 'ENVIADO' or puede_editar_gastos %}2{% else %}1{% endif %}"></td>
           </tr>
         </tfoot>
       </table>

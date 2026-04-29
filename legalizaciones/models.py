@@ -27,9 +27,10 @@ def validar_cedula_nit(value):
 
 class Legalizacion(models.Model):
     class Estado(models.TextChoices):
-        BORRADOR = "BORRADOR", "Borrador"
-        ENVIADO = "ENVIADO", "Enviado"
-        APROBADO = "APROBADO", "Aprobado"
+        BORRADOR  = "BORRADOR",  "Borrador"
+        ENVIADO   = "ENVIADO",   "Enviado"
+        DEVUELTO  = "DEVUELTO",  "Devuelto para corrección"
+        APROBADO  = "APROBADO",  "Aprobado"
         RECHAZADO = "RECHAZADO", "Rechazado"
 
     numero = models.UUIDField(
@@ -246,3 +247,44 @@ class Gasto(models.Model):
 
     def __str__(self):
         return f"{self.numero_factura} - {self.cliente_proveedor} (${self.valor})"
+
+
+class Notificacion(models.Model):
+    class Tipo(models.TextChoices):
+        ENVIADA         = "ENVIADA",         "Legalización enviada"
+        APROBADA        = "APROBADA",        "Legalización aprobada"
+        RECHAZADA       = "RECHAZADA",       "Legalización rechazada"
+        DEVUELTA        = "DEVUELTA",        "Devuelta para corrección"
+        GASTO_RECHAZADO = "GASTO_RECHAZADO", "Gasto rechazado"
+
+    destinatario = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="notificaciones",
+        verbose_name="Destinatario",
+    )
+    tipo = models.CharField(max_length=20, choices=Tipo.choices, verbose_name="Tipo")
+    titulo = models.CharField(max_length=200, verbose_name="Título")
+    mensaje = models.TextField(blank=True, verbose_name="Mensaje")
+    url = models.CharField(max_length=500, blank=True, verbose_name="URL de acceso")
+    leida = models.BooleanField(default=False, verbose_name="Leída")
+    legalizacion = models.ForeignKey(
+        Legalizacion,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="notificaciones",
+        verbose_name="Legalización",
+    )
+    creado_en = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Notificación"
+        verbose_name_plural = "Notificaciones"
+        ordering = ["-creado_en"]
+        indexes = [
+            models.Index(fields=["destinatario", "leida", "-creado_en"]),
+        ]
+
+    def __str__(self):
+        return f"[{self.tipo}] {self.titulo} → {self.destinatario}"

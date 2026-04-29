@@ -32,6 +32,7 @@
     .badge-enviado   { display:inline-flex; align-items:center; padding:2px 10px; border-radius:9999px; font-size:0.75rem; font-weight:500; background:#dbeafe; color:#1d4ed8; }
     .badge-aprobado  { display:inline-flex; align-items:center; padding:2px 10px; border-radius:9999px; font-size:0.75rem; font-weight:500; background:#d1fae5; color:#065f46; }
     .badge-rechazado { display:inline-flex; align-items:center; padding:2px 10px; border-radius:9999px; font-size:0.75rem; font-weight:500; background:#fee2e2; color:#991b1b; }
+    .badge-devuelto  { display:inline-flex; align-items:center; padding:2px 10px; border-radius:9999px; font-size:0.75rem; font-weight:500; background:#ffedd5; color:#9a3412; }
   </style>
 </head>
 <body class="h-full" x-data="{ sidebarOpen: false }">
@@ -64,6 +65,159 @@
           <h1 class="text-xl font-bold text-slate-900">{% block page_title %}{% endblock %}</h1>
         </div>
         {% if user.is_authenticated %}
+
+        <!-- Campana de notificaciones -->
+        <div x-data="{
+          open: false,
+          items: [],
+          noLeidas: {{ notif_no_leidas }},
+          cargado: false,
+          iconPaths: {
+            ENVIADA:         'M12 19l9 2-9-18-9 18 9-2zm0 0v-8',
+            APROBADA:        'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z',
+            RECHAZADA:       'M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z',
+            GASTO_RECHAZADO: 'M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z',
+            DEVUELTA:        'M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6'
+          },
+          async abrir() {
+            this.open = !this.open;
+            if (this.open && !this.cargado) await this.cargar();
+          },
+          async cargar() {
+            const r = await fetch('{% url "notificaciones_api" %}');
+            const d = await r.json();
+            this.items = d.items;
+            this.noLeidas = d.no_leidas;
+            this.cargado = true;
+          },
+          async marcarTodas() {
+            await fetch('{% url "notificaciones_marcar_todas" %}', {
+              method: 'POST',
+              headers: {'X-CSRFToken': '{{ csrf_token }}'}
+            });
+            this.items.forEach(i => i.leida = true);
+            this.noLeidas = 0;
+          },
+          colorClasses(tipo) {
+            return {
+              ENVIADA:         'bg-blue-50 text-blue-500',
+              APROBADA:        'bg-emerald-50 text-emerald-500',
+              RECHAZADA:       'bg-red-50 text-red-500',
+              GASTO_RECHAZADO: 'bg-red-50 text-red-500',
+              DEVUELTA:        'bg-orange-50 text-orange-500',
+            }[tipo] || 'bg-slate-50 text-slate-400';
+          }
+        }" class="relative" @keydown.escape="open=false">
+
+          <!-- Botón campana -->
+          <button @click="abrir()"
+                  class="relative p-2 rounded-xl hover:bg-slate-100 text-slate-500 transition-colors"
+                  :class="open ? 'bg-slate-100' : ''"
+                  aria-label="Notificaciones">
+            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+            </svg>
+            <!-- Badge -->
+            <span x-show="noLeidas > 0" x-cloak
+                  x-text="noLeidas > 9 ? '9+' : noLeidas"
+                  class="absolute -top-0.5 -right-0.5 min-w-[1.15rem] h-[1.15rem] rounded-full
+                         bg-red-500 text-white text-[10px] font-bold
+                         flex items-center justify-center px-1 leading-none pointer-events-none">
+            </span>
+          </button>
+
+          <!-- Dropdown -->
+          <div x-show="open" x-cloak @click.away="open=false"
+               x-transition:enter="transition ease-out duration-150"
+               x-transition:enter-start="opacity-0 scale-95 -translate-y-1"
+               x-transition:enter-end="opacity-100 scale-100 translate-y-0"
+               x-transition:leave="transition ease-in duration-100"
+               x-transition:leave-start="opacity-100 scale-100"
+               x-transition:leave-end="opacity-0 scale-95"
+               class="absolute right-0 top-full mt-2 w-80 sm:w-96 bg-white rounded-2xl
+                      border border-slate-200 shadow-xl z-50 overflow-hidden origin-top-right">
+
+            <!-- Header -->
+            <div class="flex items-center justify-between px-4 py-3.5 border-b border-slate-100">
+              <div class="flex items-center gap-2">
+                <h3 class="text-sm font-semibold text-slate-800">Notificaciones</h3>
+                <span x-show="noLeidas > 0" x-text="noLeidas"
+                      class="px-1.5 py-0.5 rounded-full bg-red-100 text-red-600 text-xs font-bold leading-none">
+                </span>
+              </div>
+              <button @click="marcarTodas()" x-show="noLeidas > 0"
+                      class="text-xs text-indigo-600 hover:text-indigo-700 font-medium transition-colors">
+                Marcar todas como leídas
+              </button>
+            </div>
+
+            <!-- Lista -->
+            <div class="max-h-[26rem] overflow-y-auto divide-y divide-slate-50">
+
+              <!-- Cargando -->
+              <template x-if="!cargado">
+                <div class="px-4 py-8 flex items-center justify-center gap-2 text-sm text-slate-400">
+                  <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
+                  </svg>
+                  Cargando…
+                </div>
+              </template>
+
+              <!-- Vacío -->
+              <template x-if="cargado && items.length === 0">
+                <div class="px-4 py-10 text-center">
+                  <svg class="w-8 h-8 text-slate-200 mx-auto mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                          d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+                  </svg>
+                  <p class="text-sm text-slate-400">Sin notificaciones</p>
+                </div>
+              </template>
+
+              <!-- Items -->
+              <template x-if="cargado && items.length > 0">
+                <div>
+                  <template x-for="n in items" :key="n.id">
+                    <a :href="n.url_leer"
+                       class="flex items-start gap-3 px-4 py-3.5 hover:bg-slate-50 transition-colors group"
+                       :class="n.leida ? '' : 'bg-indigo-50/30'">
+                      <!-- Icono tipo -->
+                      <div class="w-8 h-8 rounded-full flex items-center justify-center shrink-0 mt-0.5"
+                           :class="colorClasses(n.tipo)">
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                :d="iconPaths[n.tipo] || 'M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z'"/>
+                        </svg>
+                      </div>
+                      <!-- Texto -->
+                      <div class="flex-1 min-w-0">
+                        <p class="text-sm font-semibold text-slate-800 leading-tight" x-text="n.titulo"></p>
+                        <p class="text-xs text-slate-500 mt-0.5 leading-relaxed line-clamp-2" x-text="n.mensaje"></p>
+                        <p class="text-[11px] text-slate-400 mt-1" x-text="'hace ' + n.hace"></p>
+                      </div>
+                      <!-- Punto no leída -->
+                      <span x-show="!n.leida"
+                            class="w-2 h-2 rounded-full bg-indigo-500 shrink-0 mt-2"></span>
+                    </a>
+                  </template>
+                </div>
+              </template>
+            </div>
+
+            <!-- Footer -->
+            <div class="px-4 py-3 border-t border-slate-100 bg-slate-50/50">
+              <a href="{% url 'notificaciones_list' %}"
+                 class="text-xs text-indigo-600 hover:text-indigo-700 font-medium transition-colors">
+                Ver todas las notificaciones →
+              </a>
+            </div>
+          </div>
+        </div>
+
+        <!-- Logout -->
         <a href="{% url 'logout' %}"
            class="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold text-slate-500
                   hover:bg-red-50 hover:text-red-600 border border-slate-200 hover:border-red-200 transition-all">

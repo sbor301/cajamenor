@@ -1,0 +1,197 @@
+{% extends "base.html" %}
+{% load formato %}
+{% block title %}Editar Gasto{% endblock %}
+{% block page_title %}Editar Gasto{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl space-y-6">
+
+  <!-- Breadcrumb -->
+  <nav class="flex items-center gap-1.5 text-xs text-slate-400">
+    <a href="{% url 'legalizacion_list' %}" class="hover:text-indigo-600 transition-colors">Legalizaciones</a>
+    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+    </svg>
+    <a href="{% url 'legalizacion_detail' leg.pk %}"
+       class="hover:text-indigo-600 transition-colors font-mono font-semibold">{{ leg.codigo }}</a>
+    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+    </svg>
+    <span class="text-slate-500 font-medium">Editar Gasto</span>
+  </nav>
+
+  <!-- Aviso de rechazo -->
+  {% if gasto.motivo_rechazo %}
+  <div class="bg-red-50 border border-red-200 rounded-2xl p-4 flex items-start gap-3">
+    <svg class="w-5 h-5 text-red-400 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+    </svg>
+    <div>
+      <p class="text-sm font-semibold text-red-700">Motivo del rechazo</p>
+      <p class="text-sm text-red-600 mt-0.5 leading-relaxed">{{ gasto.motivo_rechazo }}</p>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Formulario -->
+  <form method="post" enctype="multipart/form-data" class="space-y-6">
+    {% csrf_token %}
+
+    <div class="bg-white rounded-2xl border border-slate-200 p-6 space-y-5">
+      <h2 class="text-base font-semibold text-slate-800">Datos del Gasto</h2>
+
+      <!-- Fila 1: Fecha y Proveedor -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1.5">
+            Fecha <span class="text-red-500">*</span>
+          </label>
+          <input type="date" name="fecha" required
+                 value="{{ gasto.fecha|date:'Y-m-d' }}"
+                 max="{% now 'Y-m-d' %}"
+                 class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm text-slate-900
+                        focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"/>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1.5">
+            Proveedor / Cliente <span class="text-red-500">*</span>
+          </label>
+          <input type="text" name="cliente_proveedor" required maxlength="255"
+                 value="{{ gasto.cliente_proveedor }}"
+                 placeholder="Nombre de la empresa o persona"
+                 class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm text-slate-900
+                        focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"/>
+        </div>
+      </div>
+
+      <!-- Fila 2: NIT y Factura -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1.5">
+            Cédula / NIT <span class="text-red-500">*</span>
+          </label>
+          <input type="text" name="cedula_nit" required maxlength="32"
+                 value="{{ gasto.cedula_nit }}"
+                 placeholder="900123456-7"
+                 class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm text-slate-900
+                        font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"/>
+          <p class="text-xs text-slate-400 mt-1">Solo dígitos y guión. Ej: 900123456-7</p>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1.5">
+            Número de Factura <span class="text-red-500">*</span>
+          </label>
+          <input type="text" name="numero_factura" required maxlength="64"
+                 value="{{ gasto.numero_factura }}"
+                 placeholder="FE-001"
+                 class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm text-slate-900
+                        focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"/>
+        </div>
+      </div>
+
+      <!-- Fila 3: Centro de costos -->
+      <div>
+        <label class="block text-sm font-medium text-slate-700 mb-1.5">
+          Centro de Costos <span class="text-red-500">*</span>
+        </label>
+        <input type="text" name="centro_costos" required maxlength="64"
+               value="{{ gasto.centro_costos }}"
+               placeholder="Ej: Administración, Ventas…"
+               class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm text-slate-900
+                      focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"/>
+      </div>
+
+      <!-- Fila 4: Valor base e IVA -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1.5">
+            Valor Base <span class="text-red-500">*</span>
+          </label>
+          <div class="relative">
+            <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm">$</span>
+            <input type="number" name="valor_base" step="0.01" min="0.01" required
+                   value="{{ gasto.valor_base }}"
+                   placeholder="0.00"
+                   class="w-full pl-7 pr-3.5 py-2.5 rounded-xl border border-slate-300 text-sm text-slate-900
+                          focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"/>
+          </div>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1.5">IVA</label>
+          <div class="relative">
+            <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm">$</span>
+            <input type="number" name="iva" step="0.01" min="0"
+                   value="{{ gasto.iva }}"
+                   placeholder="0.00"
+                   class="w-full pl-7 pr-3.5 py-2.5 rounded-xl border border-slate-300 text-sm text-slate-900
+                          focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"/>
+          </div>
+          <p class="text-xs text-slate-400 mt-1">Dejar en 0 si no aplica.</p>
+        </div>
+      </div>
+
+      <!-- Observaciones -->
+      <div>
+        <label class="block text-sm font-medium text-slate-700 mb-1.5">Observaciones</label>
+        <textarea name="observaciones" rows="3"
+                  placeholder="Notas adicionales sobre este gasto (opcional)…"
+                  class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm text-slate-900
+                         focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent
+                         placeholder-slate-400 resize-none">{{ gasto.observaciones|default:'' }}</textarea>
+      </div>
+
+      <!-- Archivo de factura -->
+      <div>
+        <label class="block text-sm font-medium text-slate-700 mb-1.5">
+          Soporte / Archivo de factura
+        </label>
+        {% if gasto.archivo_factura %}
+        <div class="flex items-center gap-3 mb-2 p-3 bg-slate-50 rounded-xl border border-slate-200">
+          <svg class="w-5 h-5 text-indigo-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/>
+          </svg>
+          <span class="text-xs text-slate-600 truncate">Archivo actual:
+            <a href="{{ gasto.archivo_factura.url }}" target="_blank"
+               class="text-indigo-600 hover:text-indigo-700 underline underline-offset-2">
+              Ver soporte adjunto
+            </a>
+          </span>
+        </div>
+        <p class="text-xs text-slate-400 mb-1.5">Sube un nuevo archivo para reemplazarlo (opcional).</p>
+        {% endif %}
+        <input type="file" name="archivo_factura" accept=".pdf,.jpg,.jpeg,.png"
+               class="block w-full text-sm text-slate-600
+                      file:mr-3 file:py-2 file:px-4
+                      file:rounded-lg file:border-0
+                      file:text-sm file:font-medium
+                      file:bg-indigo-50 file:text-indigo-700
+                      hover:file:bg-indigo-100 cursor-pointer"/>
+        <p class="text-xs text-slate-400 mt-1.5">Formatos: JPG, PNG o PDF. Máx. 10 MB.</p>
+      </div>
+    </div>
+
+    <!-- Botones -->
+    <div class="flex items-center justify-between">
+      <a href="{% url 'legalizacion_detail' leg.pk %}"
+         class="inline-flex items-center gap-2 text-sm text-slate-500 hover:text-slate-700 transition-colors">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+        </svg>
+        Cancelar
+      </a>
+      <button type="submit"
+              class="inline-flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700
+                     text-white text-sm font-semibold rounded-xl transition-colors">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M5 13l4 4L19 7"/>
+        </svg>
+        Guardar cambios
+      </button>
+    </div>
+  </form>
+
+</div>
+{% endblock %}
