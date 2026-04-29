@@ -1,3 +1,7 @@
+import re
+from datetime import date
+from decimal import Decimal
+
 from django.db import transaction
 from rest_framework import serializers
 
@@ -15,12 +19,14 @@ class GastoSerializer(serializers.ModelSerializer):
             "cedula_nit",
             "numero_factura",
             "centro_costos",
+            "valor_base",
+            "iva",
             "valor",
             "observaciones",
             "creado_en",
             "actualizado_en",
         ]
-        read_only_fields = ["id", "creado_en", "actualizado_en"]
+        read_only_fields = ["id", "valor", "creado_en", "actualizado_en"]
 
 
 class GastoAnidadoSerializer(serializers.ModelSerializer):
@@ -37,9 +43,39 @@ class GastoAnidadoSerializer(serializers.ModelSerializer):
             "cedula_nit",
             "numero_factura",
             "centro_costos",
+            "valor_base",
+            "iva",
             "valor",
             "observaciones",
         ]
+        read_only_fields = ["valor"]
+
+    def validate_fecha(self, value):
+        if value > date.today():
+            raise serializers.ValidationError("La fecha del gasto no puede ser en el futuro.")
+        return value
+
+    def validate_cedula_nit(self, value):
+        clean = re.sub(r"[\s\-]", "", value)
+        if not clean.isdigit():
+            raise serializers.ValidationError(
+                "Solo debe contener dígitos. Formato: 123456789 o 900123456-7"
+            )
+        if not (5 <= len(clean) <= 12):
+            raise serializers.ValidationError(
+                f"Debe tener entre 5 y 12 dígitos (ingresaste {len(clean)})."
+            )
+        return value
+
+    def validate_valor_base(self, value):
+        if value <= Decimal("0"):
+            raise serializers.ValidationError("El valor base debe ser mayor a cero.")
+        return value
+
+    def validate_iva(self, value):
+        if value < Decimal("0"):
+            raise serializers.ValidationError("El IVA no puede ser negativo.")
+        return value
 
 
 class LegalizacionSerializer(serializers.ModelSerializer):
@@ -69,6 +105,22 @@ class LegalizacionSerializer(serializers.ModelSerializer):
             "actualizado_en",
         ]
         read_only_fields = ["numero", "saldo", "elaboro", "aprobado_por", "creado_en", "actualizado_en"]
+
+    def validate_monto_aprobado(self, value):
+        if value <= Decimal("0"):
+            raise serializers.ValidationError("El monto aprobado debe ser mayor a cero.")
+        return value
+
+    def validate(self, attrs):
+        fecha_solicitud = attrs.get("fecha_solicitud")
+        fecha_consignacion = attrs.get("fecha_consignacion")
+        if fecha_consignacion and fecha_solicitud and fecha_consignacion < fecha_solicitud:
+            raise serializers.ValidationError({
+                "fecha_consignacion": (
+                    "La fecha de consignación no puede ser anterior a la fecha de solicitud."
+                )
+            })
+        return attrs
 
     @transaction.atomic
     def create(self, validated_data):

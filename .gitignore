@@ -36,3 +36,9 @@ htmlcov/
 # Docker
 postgres_data/
 
+# Tesseract language data (binarios grandes, descargar manualmente)
+tessdata/
+
+# Claude settings locales
+.claude/settings.local.json
+

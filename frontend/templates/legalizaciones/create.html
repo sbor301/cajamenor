@@ -1,0 +1,520 @@
+{% extends "base.html" %}
+{% block title %}Nueva Legalización{% endblock %}
+{% block page_title %}Nueva Legalización{% endblock %}
+
+{% block content %}
+<div x-data="gastoForm()" class="max-w-5xl space-y-6">
+
+  <!-- Page header -->
+  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2">
+    <div>
+      <nav class="flex items-center gap-1.5 text-xs text-slate-400 mb-1.5">
+        <a href="{% url 'legalizacion_list' %}" class="hover:text-indigo-600 transition-colors">Legalizaciones</a>
+        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+        </svg>
+        <span class="text-slate-500 font-medium">Nueva</span>
+      </nav>
+      <h1 class="text-xl font-bold text-slate-900">Nueva Legalización</h1>
+      <p class="text-sm text-slate-500 mt-0.5">Completa los datos y agrega los gastos asociados.</p>
+    </div>
+  </div>
+
+  <form method="post" enctype="multipart/form-data" class="space-y-6" @submit="enviar($event)">
+    {% csrf_token %}
+
+    <!-- Cabecera -->
+    <div class="bg-white rounded-2xl border border-slate-200 p-6">
+      <h2 class="text-base font-semibold text-slate-800 mb-5">Datos de la Legalización</h2>
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+
+        <!-- Monto Aprobado -->
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1.5">
+            Monto Aprobado <span class="text-red-500">*</span>
+          </label>
+          <div class="relative">
+            <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm">$</span>
+            <input type="number" name="monto_aprobado" step="0.01" min="0.01" required
+                   x-model="monto"
+                   :class="errMonto() ? 'border-red-400 focus:ring-red-400' : 'border-slate-300 focus:ring-indigo-500'"
+                   class="w-full pl-7 pr-3.5 py-2.5 rounded-xl border text-sm text-slate-900
+                          focus:outline-none focus:ring-2 focus:border-transparent"
+                   placeholder="0.00"/>
+          </div>
+          <p x-show="errMonto()" x-text="errMonto()" class="field-error mt-1 text-xs text-red-500"></p>
+        </div>
+
+        <!-- Fecha de Solicitud -->
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1.5">
+            Fecha de Solicitud <span class="text-red-500">*</span>
+          </label>
+          <input type="date" name="fecha_solicitud" required
+                 x-model="fechaSolicitud"
+                 :class="errFechaSol() ? 'border-red-400 focus:ring-red-400' : 'border-slate-300 focus:ring-indigo-500'"
+                 class="w-full px-3.5 py-2.5 rounded-xl border text-sm text-slate-900
+                        focus:outline-none focus:ring-2 focus:border-transparent"/>
+          <p x-show="errFechaSol()" x-text="errFechaSol()" class="field-error mt-1 text-xs text-red-500"></p>
+        </div>
+
+        <!-- Fecha de Consignación -->
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1.5">Fecha de Consignación</label>
+          <input type="date" name="fecha_consignacion"
+                 x-model="fechaConsignacion"
+                 :min="fechaSolicitud"
+                 :class="errFechaCons() ? 'border-red-400 focus:ring-red-400' : 'border-slate-300 focus:ring-indigo-500'"
+                 class="w-full px-3.5 py-2.5 rounded-xl border text-sm text-slate-900
+                        focus:outline-none focus:ring-2 focus:border-transparent"/>
+          <p x-show="errFechaCons()" x-text="errFechaCons()" class="field-error mt-1 text-xs text-red-500"></p>
+        </div>
+
+        <!-- Estado -->
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1.5">Estado Inicial</label>
+          <select name="estado"
+                  class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm text-slate-700
+                         focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white">
+            {% for value, label in estados %}
+            <option value="{{ value }}" {% if value == 'BORRADOR' %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- Gastos -->
+    <div class="bg-white rounded-2xl border border-slate-200">
+      <div class="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+        <div>
+          <h2 class="text-base font-semibold text-slate-800">Gastos</h2>
+          <p class="text-xs text-slate-400 mt-0.5" x-text="`${gastos.length} gasto${gastos.length !== 1 ? 's' : ''} agregado${gastos.length !== 1 ? 's' : ''}`"></p>
+        </div>
+        <button type="button" @click="agregarGasto()"
+                class="inline-flex items-center gap-2 px-3.5 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700
+                       text-sm font-medium rounded-xl transition-colors">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+          </svg>
+          Agregar Gasto
+        </button>
+      </div>
+
+      <!-- Sin gastos -->
+      <div x-show="gastos.length === 0" class="px-6 py-10 text-center">
+        <svg class="w-10 h-10 text-slate-200 mx-auto mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/>
+        </svg>
+        <p class="text-sm text-slate-400">No hay gastos. Usa el botón para agregar.</p>
+      </div>
+
+      <!-- Filas de gastos -->
+      <div class="divide-y divide-slate-50">
+        <template x-for="(gasto, index) in gastos" :key="gasto.id">
+          <div class="p-5">
+            <div class="flex items-start justify-between mb-4">
+              <p class="text-sm font-semibold text-slate-700" x-text="`Gasto #${index + 1}`"></p>
+              <button type="button" @click="eliminarGasto(index)"
+                      class="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                </svg>
+              </button>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+
+              <!-- Fecha -->
+              <div>
+                <label class="block text-xs font-medium text-slate-600 mb-1">Fecha <span class="text-red-500">*</span></label>
+                <input type="date" name="gasto_fecha[]" x-model="gasto.fecha" required :max="HOY"
+                       :class="errGasto(gasto,'fecha') ? 'border-red-400' : 'border-slate-300'"
+                       class="w-full px-3 py-2 rounded-xl border text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"/>
+                <p x-show="errGasto(gasto,'fecha')" x-text="errGasto(gasto,'fecha')" class="field-error mt-1 text-xs text-red-500"></p>
+              </div>
+
+              <!-- Proveedor -->
+              <div>
+                <label class="block text-xs font-medium text-slate-600 mb-1">Cliente / Proveedor <span class="text-red-500">*</span></label>
+                <input type="text" name="gasto_proveedor[]" x-model="gasto.proveedor" required
+                       :class="errGasto(gasto,'proveedor') ? 'border-red-400' : 'border-slate-300'"
+                       class="w-full px-3 py-2 rounded-xl border text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                       placeholder="Nombre del proveedor"/>
+                <p x-show="errGasto(gasto,'proveedor')" x-text="errGasto(gasto,'proveedor')" class="field-error mt-1 text-xs text-red-500"></p>
+              </div>
+
+              <!-- NIT -->
+              <div>
+                <label class="block text-xs font-medium text-slate-600 mb-1">
+                  Cédula / NIT <span class="text-red-500">*</span>
+                  <span class="text-slate-400 font-normal">(ej: 900123456-7)</span>
+                </label>
+                <input type="text" name="gasto_nit[]" x-model="gasto.nit" required
+                       :class="errGasto(gasto,'nit') ? 'border-red-400' : 'border-slate-300'"
+                       class="w-full px-3 py-2 rounded-xl border text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                       placeholder="123456789-0"/>
+                <p x-show="errGasto(gasto,'nit')" x-text="errGasto(gasto,'nit')" class="field-error mt-1 text-xs text-red-500"></p>
+              </div>
+
+              <!-- Factura -->
+              <div>
+                <label class="block text-xs font-medium text-slate-600 mb-1">N° Factura <span class="text-red-500">*</span></label>
+                <input type="text" name="gasto_factura[]" x-model="gasto.factura" required
+                       :class="errGasto(gasto,'factura') ? 'border-red-400' : 'border-slate-300'"
+                       class="w-full px-3 py-2 rounded-xl border text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                       placeholder="F-001"/>
+                <p x-show="errGasto(gasto,'factura')" x-text="errGasto(gasto,'factura')" class="field-error mt-1 text-xs text-red-500"></p>
+              </div>
+
+              <!-- Centro de Costos -->
+              <div>
+                <label class="block text-xs font-medium text-slate-600 mb-1">Centro de Costos <span class="text-red-500">*</span></label>
+                <input type="text" name="gasto_centro[]" x-model="gasto.centro" required
+                       :class="errGasto(gasto,'centro') ? 'border-red-400' : 'border-slate-300'"
+                       class="w-full px-3 py-2 rounded-xl border text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                       placeholder="ADM-01"/>
+                <p x-show="errGasto(gasto,'centro')" x-text="errGasto(gasto,'centro')" class="field-error mt-1 text-xs text-red-500"></p>
+              </div>
+
+              <!-- Valor Base -->
+              <div>
+                <label class="block text-xs font-medium text-slate-600 mb-1">Valor base <span class="text-red-500">*</span></label>
+                <div class="relative">
+                  <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">$</span>
+                  <input type="number" name="gasto_valor_base[]" x-model="gasto.valorBase"
+                         @input="calcularIva(gasto)"
+                         step="0.01" min="0.01" required
+                         :class="errGasto(gasto,'valorBase') ? 'border-red-400' : 'border-slate-300'"
+                         class="w-full pl-6 pr-3 py-2 rounded-xl border text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                         placeholder="0.00"/>
+                </div>
+                <p x-show="errGasto(gasto,'valorBase')" x-text="errGasto(gasto,'valorBase')" class="field-error mt-1 text-xs text-red-500"></p>
+              </div>
+
+              <!-- Tasa IVA -->
+              <div>
+                <label class="block text-xs font-medium text-slate-600 mb-1">Tasa IVA</label>
+                <select x-model="gasto.tasaIva" @change="calcularIva(gasto)"
+                        class="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm text-slate-700
+                               focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white">
+                  <option value="0">Sin IVA (0%)</option>
+                  <option value="5">IVA 5%</option>
+                  <option value="19">IVA 19%</option>
+                </select>
+              </div>
+
+              <!-- IVA monto + Total (solo lectura) -->
+              <div>
+                <label class="block text-xs font-medium text-slate-600 mb-1">IVA y Valor Total</label>
+                <div class="flex gap-2">
+                  <div class="relative flex-1">
+                    <span class="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs leading-none">IVA<br>$</span>
+                    <input type="number" name="gasto_iva[]" x-model="gasto.iva"
+                           @input="gasto.tasaIva = ''"
+                           step="0.01" min="0"
+                           class="w-full pl-9 pr-2 py-2 rounded-xl border border-slate-300 text-sm
+                                  focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                           placeholder="0.00"/>
+                  </div>
+                  <div class="relative flex-1">
+                    <span class="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs leading-none">Total<br>$</span>
+                    <input type="text" readonly :value="totalGasto(gasto)"
+                           class="w-full pl-12 pr-2 py-2 rounded-xl border border-slate-200 bg-slate-50
+                                  text-sm font-semibold text-slate-700 cursor-default"/>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Observaciones -->
+              <div class="sm:col-span-2 lg:col-span-3">
+                <label class="block text-xs font-medium text-slate-600 mb-1">Observaciones</label>
+                <input type="text" name="gasto_obs[]" x-model="gasto.obs"
+                       class="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                       placeholder="Opcional..."/>
+              </div>
+
+              <!-- Adjuntar Factura + OCR -->
+              <div class="sm:col-span-2 lg:col-span-3">
+                <div class="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-4">
+
+                  <div class="flex flex-col sm:flex-row sm:items-center gap-3">
+                    <!-- Zona de carga -->
+                    <label class="flex-1 cursor-pointer">
+                      <div class="flex items-center gap-2 text-sm text-slate-500">
+                        <svg class="w-5 h-5 text-slate-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/>
+                        </svg>
+                        <span x-text="gasto.archivoNombre || 'Adjuntar factura (JPG, PNG, PDF — máx 10 MB)'"
+                              :class="gasto.archivoNombre ? 'text-indigo-600 font-medium' : ''"></span>
+                      </div>
+                      <input type="file" name="gasto_archivo[]"
+                             accept=".jpg,.jpeg,.png,.pdf,.tiff,.webp"
+                             class="sr-only"
+                             @change="seleccionarArchivo(gasto, $event)"/>
+                    </label>
+
+                    <!-- Botón OCR -->
+                    <button type="button"
+                            x-show="gasto.archivoSeleccionado"
+                            @click="analizarOCR(gasto)"
+                            :disabled="gasto.ocr.cargando"
+                            class="shrink-0 inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700
+                                   disabled:opacity-50 text-white text-sm font-semibold rounded-xl transition-colors">
+                      <svg x-show="!gasto.ocr.cargando" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
+                      </svg>
+                      <svg x-show="gasto.ocr.cargando" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
+                      </svg>
+                      <span x-text="gasto.ocr.cargando ? 'Analizando...' : 'Analizar con OCR'"></span>
+                    </button>
+                  </div>
+
+                  <!-- Resultado OCR -->
+                  <div x-show="gasto.ocr.resultado" x-cloak class="mt-3 pt-3 border-t border-slate-200">
+
+                    <!-- Error -->
+                    <div x-show="!gasto.ocr.resultado?.ok" class="flex items-start gap-2 text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-3">
+                      <svg class="w-4 h-4 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M12 3a9 9 0 100 18A9 9 0 0012 3z"/>
+                      </svg>
+                      <span x-text="gasto.ocr.resultado?.mensaje"></span>
+                    </div>
+
+                    <!-- Éxito: campos detectados -->
+                    <div x-show="gasto.ocr.resultado?.ok">
+                      <div class="flex items-center justify-between mb-2">
+                        <p class="text-xs font-semibold text-slate-600 flex items-center gap-1.5">
+                          <span class="w-2 h-2 rounded-full"
+                                :class="{'bg-emerald-500': gasto.ocr.resultado?.confianza==='alta',
+                                         'bg-amber-400':   gasto.ocr.resultado?.confianza==='media',
+                                         'bg-red-400':     gasto.ocr.resultado?.confianza==='baja'}"></span>
+                          Confianza <span x-text="gasto.ocr.resultado?.confianza" class="capitalize"></span>
+                          — <span x-text="gasto.ocr.resultado?.campos_detectados"></span> campos detectados
+                        </p>
+                        <button type="button" @click="aplicarOCR(gasto)"
+                                class="text-xs font-semibold text-indigo-600 hover:text-indigo-800 underline underline-offset-2">
+                          Aplicar todo
+                        </button>
+                      </div>
+                      <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                        <template x-for="[clave, valor] in Object.entries(gasto.ocr.resultado?.campos || {})" :key="clave">
+                          <div x-show="valor" class="flex items-start justify-between gap-1 bg-white border border-slate-200 rounded-lg px-2.5 py-2">
+                            <div class="min-w-0">
+                              <p class="text-xs text-slate-400 truncate" x-text="etiquetaCampo(clave)"></p>
+                              <p class="text-xs font-semibold text-slate-800 truncate" x-text="valor"></p>
+                            </div>
+                            <button type="button" @click="aplicarCampo(gasto, clave, valor)"
+                                    class="shrink-0 text-indigo-500 hover:text-indigo-700 mt-0.5">
+                              <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
+                              </svg>
+                            </button>
+                          </div>
+                        </template>
+                      </div>
+                    </div>
+
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </template>
+      </div>
+
+      <!-- Totales generales -->
+      <div x-show="gastos.length > 0" class="px-6 py-4 bg-slate-50 rounded-b-2xl border-t border-slate-100">
+        <div class="flex justify-end gap-8">
+          <div class="text-right">
+            <p class="text-xs text-slate-500 uppercase tracking-wide">Total IVA</p>
+            <p class="text-base font-semibold text-slate-700" x-text="`$${totalIva().toLocaleString('es-CO', {minimumFractionDigits:2})}`"></p>
+          </div>
+          <div class="text-right">
+            <p class="text-xs text-slate-500 uppercase tracking-wide">Total Gastos</p>
+            <p class="text-xl font-bold text-slate-900" x-text="`$${totalGastos().toLocaleString('es-CO', {minimumFractionDigits:2})}`"></p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Acciones -->
+    <div class="flex items-center justify-end gap-3">
+      <a href="{% url 'legalizacion_list' %}"
+         class="px-5 py-2.5 text-sm font-medium text-slate-600 hover:text-slate-800 transition-colors">
+        Cancelar
+      </a>
+      <button type="submit"
+              class="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold rounded-xl transition-colors">
+        Guardar Legalización
+      </button>
+    </div>
+
+  </form>
+</div>
+
+<script>
+  const HOY = new Date().toISOString().split('T')[0];
+
+  function gastoForm() {
+    return {
+      gastos: [],
+      counter: 0,
+      submitted: false,
+
+      monto: '',
+      fechaSolicitud: '',
+      fechaConsignacion: '',
+
+      errMonto() {
+        return this.submitted && (!this.monto || parseFloat(this.monto) <= 0)
+          ? 'El monto debe ser mayor a cero.' : '';
+      },
+      errFechaSol() {
+        return this.submitted && !this.fechaSolicitud
+          ? 'La fecha de solicitud es obligatoria.' : '';
+      },
+      errFechaCons() {
+        if (!this.submitted || !this.fechaConsignacion || !this.fechaSolicitud) return '';
+        return this.fechaConsignacion < this.fechaSolicitud
+          ? 'La fecha de consignacion no puede ser anterior a la de solicitud.' : '';
+      },
+
+      agregarGasto() {
+        this.gastos.push({
+          id: ++this.counter,
+          fecha: '', proveedor: '', nit: '', factura: '', centro: '',
+          valorBase: '', tasaIva: '19', iva: '0.00', obs: '',
+          archivoNombre: '', archivoSeleccionado: null,
+          ocr: { cargando: false, resultado: null }
+        });
+      },
+      eliminarGasto(index) { this.gastos.splice(index, 1); },
+
+      calcularIva(g) {
+        const base = parseFloat(g.valorBase) || 0;
+        const tasa = parseFloat(g.tasaIva)   || 0;
+        g.iva = (base * tasa / 100).toFixed(2);
+      },
+      totalGasto(g) {
+        const base = parseFloat(g.valorBase) || 0;
+        const iva  = parseFloat(g.iva)       || 0;
+        return (base + iva).toLocaleString('es-CO', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      },
+      totalIva() {
+        return this.gastos.reduce((s, g) => s + (parseFloat(g.iva) || 0), 0);
+      },
+      totalGastos() {
+        return this.gastos.reduce((s, g) =>
+          s + (parseFloat(g.valorBase) || 0) + (parseFloat(g.iva) || 0), 0);
+      },
+
+      // ── OCR ──────────────────────────────────────────────────────────────
+      seleccionarArchivo(g, event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        g.archivoNombre = file.name;
+        g.archivoSeleccionado = file;
+        g.ocr.resultado = null;
+      },
+
+      async analizarOCR(g) {
+        if (!g.archivoSeleccionado) return;
+        g.ocr.cargando = true;
+        g.ocr.resultado = null;
+        const fd = new FormData();
+        fd.append('archivo', g.archivoSeleccionado);
+        fd.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value);
+        try {
+          const res = await fetch('{% url "ocr_factura" %}', { method: 'POST', body: fd });
+          g.ocr.resultado = await res.json();
+        } catch(e) {
+          g.ocr.resultado = { ok: false, mensaje: 'Error de conexión al analizar el archivo.' };
+        } finally {
+          g.ocr.cargando = false;
+        }
+      },
+
+      aplicarCampo(g, clave, valor) {
+        const mapa = {
+          cedula_nit:       () => g.nit      = String(valor),
+          numero_factura:   () => g.factura  = String(valor),
+          fecha:            () => g.fecha    = String(valor),
+          cliente_proveedor:() => g.proveedor= String(valor),
+          valor_base:       () => { g.valorBase = String(valor); this.calcularIva(g); },
+          iva:              () => { g.iva = String(valor); g.tasaIva = ''; },
+          valor_total:      () => {},  // solo referencia
+        };
+        if (mapa[clave]) mapa[clave]();
+      },
+
+      aplicarOCR(g) {
+        const campos = g.ocr.resultado?.campos || {};
+        Object.entries(campos).forEach(([k, v]) => this.aplicarCampo(g, k, v));
+      },
+
+      etiquetaCampo(clave) {
+        return {
+          cedula_nit:        'NIT / Cédula',
+          numero_factura:    'N° Factura',
+          fecha:             'Fecha',
+          cliente_proveedor: 'Proveedor',
+          valor_base:        'Valor base',
+          iva:               'IVA',
+          valor_total:       'Total factura',
+        }[clave] || clave;
+      },
+
+      validarNit(nit) {
+        const clean = (nit || '').replace(/[\s\-]/g, '');
+        if (!clean) return 'La cedula/NIT es obligatoria.';
+        if (!/^\d+$/.test(clean)) return 'Solo digitos y guiones. Ej: 900123456-7';
+        if (clean.length < 5 || clean.length > 12)
+          return `Debe tener entre 5 y 12 digitos (tienes ${clean.length}).`;
+        return '';
+      },
+
+      errGasto(g, campo) {
+        if (!this.submitted) return '';
+        if (campo === 'fecha') {
+          if (!g.fecha) return 'La fecha es obligatoria.';
+          if (g.fecha > HOY) return 'La fecha no puede ser futura.';
+        }
+        if (campo === 'proveedor' && !(g.proveedor || '').trim()) return 'El proveedor es obligatorio.';
+        if (campo === 'nit')    return this.validarNit(g.nit);
+        if (campo === 'factura' && !(g.factura || '').trim()) return 'El numero de factura es obligatorio.';
+        if (campo === 'centro'  && !(g.centro  || '').trim()) return 'El centro de costos es obligatorio.';
+        if (campo === 'valorBase') {
+          if (!g.valorBase) return 'El valor base es obligatorio.';
+          if (parseFloat(g.valorBase) <= 0) return 'El valor base debe ser mayor a cero.';
+        }
+        return '';
+      },
+
+      formularioValido() {
+        if (this.errMonto() || this.errFechaSol() || this.errFechaCons()) return false;
+        for (const g of this.gastos) {
+          for (const c of ['fecha','proveedor','nit','factura','centro','valorBase']) {
+            if (this.errGasto(g, c)) return false;
+          }
+        }
+        return true;
+      },
+
+      enviar(e) {
+        this.submitted = true;
+        if (!this.formularioValido()) {
+          e.preventDefault();
+          this.$nextTick(() => {
+            const el = document.querySelector('.field-error:not([style*="display: none"])');
+            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          });
+        }
+      }
+    }
+  }
+</script>
+{% endblock %}

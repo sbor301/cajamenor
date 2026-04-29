@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}Legalizaciones{% endblock %}
+{% block page_title %}Legalizaciones{% endblock %}
+
+{% block content %}
+<div class="space-y-4">
+
+  <!-- Header actions -->
+  <div class="flex items-center justify-between">
+    <p class="text-sm text-slate-500">Gestiona y consulta las legalizaciones de gastos.</p>
+    <a href="{% url 'legalizacion_create' %}"
+       class="inline-flex items-center gap-2 px-4 py-2.5 bg-brand-600 hover:bg-brand-700 text-white text-sm font-semibold rounded-xl transition-colors">
+      <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+      </svg>
+      Nueva
+    </a>
+  </div>
+
+  <!-- Filtros -->
+  <div class="bg-white rounded-2xl border border-slate-200 p-4">
+    <form hx-get="{% url 'legalizacion_list' %}"
+          hx-target="#tabla-container"
+          hx-trigger="change, input delay:400ms"
+          hx-push-url="true"
+          class="flex flex-col sm:flex-row gap-3">
+      <div class="flex-1">
+        <input type="text" name="buscar" value="{{ buscar }}"
+               placeholder="Buscar por empleado..."
+               class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm text-slate-900
+                      placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-600 focus:border-transparent"/>
+      </div>
+      <div>
+        <select name="estado"
+                class="w-full sm:w-44 px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm text-slate-700
+                       focus:outline-none focus:ring-2 focus:ring-brand-600 focus:border-transparent bg-white">
+          <option value="">Todos los estados</option>
+          {% for value, label in estados %}
+          <option value="{{ value }}" {% if estado_filtro == value %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </form>
+  </div>
+
+  <!-- Tabla -->
+  <div class="bg-white rounded-2xl border border-slate-200 overflow-hidden">
+    <div id="tabla-container">
+      {% include "legalizaciones/partials/tabla.html" %}
+    </div>
+  </div>
+
+</div>
+{% endblock %}

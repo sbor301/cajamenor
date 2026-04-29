@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="es" class="h-full bg-slate-50">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Iniciar Sesión — Caja Menor</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: { extend: { colors: { brand: { 600: '#4f46e5', 700: '#4338ca' } } } }
+    }
+  </script>
+</head>
+<body class="h-full flex items-center justify-center p-4">
+  <div class="w-full max-w-sm">
+
+    <!-- Logo -->
+    <div class="text-center mb-8">
+      <div class="inline-flex items-center justify-center w-14 h-14 bg-brand-600 rounded-2xl shadow-lg mb-4">
+        <svg class="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 11h.01M12 11h.01M15 11h.01M4 20h16a2 2 0 002-2V6a2 2 0 00-2-2H4a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+        </svg>
+      </div>
+      <h1 class="text-2xl font-bold text-slate-900">Caja Menor</h1>
+      <p class="text-sm text-slate-500 mt-1">Gestión de Gastos y Legalizaciones</p>
+    </div>
+
+    <!-- Card -->
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-8">
+      <h2 class="text-lg font-semibold text-slate-800 mb-6">Iniciar sesión</h2>
+
+      {% if messages %}
+      {% for message in messages %}
+      <div class="mb-4 p-3 rounded-lg bg-red-50 border border-red-200 text-sm text-red-700">
+        {{ message }}
+      </div>
+      {% endfor %}
+      {% endif %}
+
+      <form method="post" class="space-y-5">
+        {% csrf_token %}
+        <div>
+          <label for="username" class="block text-sm font-medium text-slate-700 mb-1.5">Usuario</label>
+          <input type="text" id="username" name="username" required autofocus
+                 class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm text-slate-900 placeholder-slate-400
+                        focus:outline-none focus:ring-2 focus:ring-brand-600 focus:border-transparent transition"
+                 placeholder="Ingresa tu usuario"/>
+        </div>
+        <div>
+          <label for="password" class="block text-sm font-medium text-slate-700 mb-1.5">Contraseña</label>
+          <div class="relative">
+            <input type="password" id="password" name="password" required
+                   class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm text-slate-900 placeholder-slate-400
+                          focus:outline-none focus:ring-2 focus:ring-brand-600 focus:border-transparent transition pr-10"
+                   placeholder="••••••••"/>
+            <button type="button" onclick="togglePass()"
+                    class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+              <svg id="eye-icon" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+        <button type="submit"
+                class="w-full py-2.5 px-4 bg-brand-600 hover:bg-brand-700 text-white text-sm font-semibold
+                       rounded-xl transition-colors focus:outline-none focus:ring-2 focus:ring-brand-600 focus:ring-offset-2">
+          Ingresar
+        </button>
+      </form>
+    </div>
+
+    <p class="text-center text-xs text-slate-400 mt-6">
+      Sistema interno — Solo personal autorizado
+    </p>
+  </div>
+
+  <script>
+    function togglePass() {
+      const input = document.getElementById('password');
+      input.type = input.type === 'password' ? 'text' : 'password';
+    }
+  </script>
+</body>
+</html>

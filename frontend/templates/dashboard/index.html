@@ -1,0 +1,140 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+  <!-- Stats grid -->
+  <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+
+    <div class="bg-white rounded-2xl border border-slate-200 p-5 flex items-center gap-4">
+      <div class="w-11 h-11 rounded-xl bg-brand-50 flex items-center justify-center shrink-0">
+        <svg class="w-6 h-6 text-brand-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+        </svg>
+      </div>
+      <div>
+        <p class="text-2xl font-bold text-slate-900">{{ stats.total|default:0 }}</p>
+        <p class="text-xs text-slate-500 mt-0.5">Total Legalizaciones</p>
+      </div>
+    </div>
+
+    <div class="bg-white rounded-2xl border border-slate-200 p-5 flex items-center gap-4">
+      <div class="w-11 h-11 rounded-xl bg-amber-50 flex items-center justify-center shrink-0">
+        <svg class="w-6 h-6 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        </svg>
+      </div>
+      <div>
+        <p class="text-2xl font-bold text-slate-900">{{ stats.pendientes|default:0 }}</p>
+        <p class="text-xs text-slate-500 mt-0.5">Pendientes</p>
+      </div>
+    </div>
+
+    <div class="bg-white rounded-2xl border border-slate-200 p-5 flex items-center gap-4">
+      <div class="w-11 h-11 rounded-xl bg-emerald-50 flex items-center justify-center shrink-0">
+        <svg class="w-6 h-6 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        </svg>
+      </div>
+      <div>
+        <p class="text-2xl font-bold text-slate-900">{{ stats.aprobadas|default:0 }}</p>
+        <p class="text-xs text-slate-500 mt-0.5">Aprobadas</p>
+      </div>
+    </div>
+
+    <div class="bg-white rounded-2xl border border-slate-200 p-5 flex items-center gap-4">
+      <div class="w-11 h-11 rounded-xl bg-blue-50 flex items-center justify-center shrink-0">
+        <svg class="w-6 h-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        </svg>
+      </div>
+      <div>
+        <p class="text-2xl font-bold text-slate-900">
+          ${{ stats.monto_total|default:0|floatformat:0 }}
+        </p>
+        <p class="text-xs text-slate-500 mt-0.5">Monto Total</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Enviadas y saldo -->
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+    <div class="bg-white rounded-2xl border border-slate-200 p-5 flex items-center gap-4">
+      <div class="w-11 h-11 rounded-xl bg-blue-50 flex items-center justify-center shrink-0">
+        <svg class="w-6 h-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
+        </svg>
+      </div>
+      <div>
+        <p class="text-2xl font-bold text-slate-900">{{ stats.enviadas|default:0 }}</p>
+        <p class="text-xs text-slate-500 mt-0.5">Enviadas — En espera de aprobación</p>
+      </div>
+    </div>
+
+    <div class="bg-white rounded-2xl border border-slate-200 p-5 flex items-center gap-4">
+      <div class="w-11 h-11 rounded-xl {% if stats.saldo_total and stats.saldo_total < 0 %}bg-red-50{% else %}bg-emerald-50{% endif %} flex items-center justify-center shrink-0">
+        <svg class="w-6 h-6 {% if stats.saldo_total and stats.saldo_total < 0 %}text-red-600{% else %}text-emerald-600{% endif %}" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3"/>
+        </svg>
+      </div>
+      <div>
+        <p class="text-2xl font-bold {% if stats.saldo_total and stats.saldo_total < 0 %}text-red-600{% else %}text-emerald-600{% endif %}">
+          ${{ stats.saldo_total|default:0|floatformat:0 }}
+        </p>
+        <p class="text-xs text-slate-500 mt-0.5">Saldo Total Acumulado</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Legalizaciones recientes -->
+  <div class="bg-white rounded-2xl border border-slate-200">
+    <div class="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+      <h2 class="text-sm font-semibold text-slate-800">Legalizaciones Recientes</h2>
+      <a href="{% url 'legalizacion_list' %}" class="text-xs text-brand-600 hover:text-brand-700 font-medium">Ver todas</a>
+    </div>
+    {% if recientes %}
+    <div class="divide-y divide-slate-50">
+      {% for leg in recientes %}
+      <a href="{% url 'legalizacion_detail' leg.pk %}"
+         class="flex items-center justify-between px-6 py-4 hover:bg-slate-50 transition-colors">
+        <div class="flex items-center gap-4">
+          <div class="w-9 h-9 rounded-full bg-brand-50 flex items-center justify-center text-brand-600 font-bold text-xs shrink-0">
+            {{ leg.elaboro.first_name|first|upper }}{{ leg.elaboro.last_name|first|upper }}
+          </div>
+          <div>
+            <p class="text-sm font-medium text-slate-800">{{ leg.elaboro.get_full_name|default:leg.elaboro.username }}</p>
+            <p class="text-xs text-slate-400">{{ leg.fecha_solicitud|date:"d M Y" }}</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-4">
+          <div class="text-right hidden sm:block">
+            <p class="text-sm font-semibold text-slate-800">${{ leg.monto_aprobado|floatformat:0 }}</p>
+            <p class="text-xs {% if leg.saldo < 0 %}text-red-500{% else %}text-emerald-500{% endif %}">
+              Saldo: ${{ leg.saldo|floatformat:0 }}
+            </p>
+          </div>
+          <span class="badge-{{ leg.estado|lower }}">{{ leg.get_estado_display }}</span>
+          <svg class="w-4 h-4 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+          </svg>
+        </div>
+      </a>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="px-6 py-12 text-center">
+      <svg class="w-10 h-10 text-slate-300 mx-auto mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+      </svg>
+      <p class="text-sm text-slate-400">No hay legalizaciones aún.</p>
+      <a href="{% url 'legalizacion_create' %}" class="mt-3 inline-block text-sm text-brand-600 font-medium hover:text-brand-700">
+        Crear la primera legalización
+      </a>
+    </div>
+    {% endif %}
+  </div>
+
+</div>
+{% endblock %}

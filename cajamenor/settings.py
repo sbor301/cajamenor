@@ -25,19 +25,8 @@ INSTALLED_APPS = [
     "django_filters",
     "drf_spectacular",
     "legalizaciones.apps.LegalizacionesConfig",
+    "frontend.apps.FrontendConfig",
 ]
-
-MIDDLEWARE = [
-    "django.middleware.security.SecurityMiddleware",
-    "django.contrib.sessions.middleware.SessionMiddleware",
-    "django.middleware.common.CommonMiddleware",
-    "django.middleware.csrf.CsrfViewMiddleware",
-    "django.contrib.auth.middleware.AuthenticationMiddleware",
-    "django.contrib.messages.middleware.MessageMiddleware",
-    "django.middleware.clickjacking.XFrameOptionsMiddleware",
-]
-
-ROOT_URLCONF = "cajamenor.urls"
 
 TEMPLATES = [
     {
@@ -53,6 +42,18 @@ TEMPLATES = [
         },
     },
 ]
+
+MIDDLEWARE = [
+    "django.middleware.security.SecurityMiddleware",
+    "django.contrib.sessions.middleware.SessionMiddleware",
+    "django.middleware.common.CommonMiddleware",
+    "django.middleware.csrf.CsrfViewMiddleware",
+    "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "django.contrib.messages.middleware.MessageMiddleware",
+    "django.middleware.clickjacking.XFrameOptionsMiddleware",
+]
+
+ROOT_URLCONF = "cajamenor.urls"
 
 WSGI_APPLICATION = "cajamenor.wsgi.application"
 
@@ -75,6 +76,14 @@ USE_TZ = True
 STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+MEDIA_URL = "/media/"
+MEDIA_ROOT = BASE_DIR / "media"
+
+# Ruta al ejecutable de Tesseract OCR
+TESSERACT_CMD = env("TESSERACT_CMD", default=r"C:\Program Files\Tesseract-OCR\tesseract.exe")
+# Carpeta con los archivos de idioma (.traineddata)
+TESSERACT_DATA = env("TESSERACT_DATA", default=str(BASE_DIR / "tessdata"))
 
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
@@ -102,6 +111,9 @@ SIMPLE_JWT = {
     "USER_ID_FIELD": "id",
     "USER_ID_CLAIM": "user_id",
 }
+
+LOGIN_URL = "/"
+LOGIN_REDIRECT_URL = "/dashboard/"
 
 SPECTACULAR_SETTINGS = {
     "TITLE": "Microservicio Caja Menor",

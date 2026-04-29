@@ -1,9 +1,28 @@
+import re
 import uuid
+from datetime import date
 from decimal import Decimal
 
 from django.conf import settings
+from django.core.exceptions import ValidationError
+from django.core.validators import MinValueValidator
 from django.db import models
 from django.db.models import Sum
+
+
+# ── Validadores reutilizables ─────────────────────────────────────────────────
+
+def validar_cedula_nit(value):
+    """Valida cédula o NIT colombiano: solo dígitos y guión opcional, 5-12 dígitos."""
+    clean = re.sub(r"[\s\-]", "", value)
+    if not clean.isdigit():
+        raise ValidationError(
+            "Solo debe contener dígitos. Formato aceptado: 123456789 o 900123456-7"
+        )
+    if not (5 <= len(clean) <= 12):
+        raise ValidationError(
+            f"Debe tener entre 5 y 12 dígitos (ingresaste {len(clean)})."
+        )
 
 
 class Legalizacion(models.Model):
@@ -23,6 +42,7 @@ class Legalizacion(models.Model):
         max_digits=14,
         decimal_places=2,
         verbose_name="Monto aprobado",
+        validators=[MinValueValidator(Decimal("0.01"), message="El monto aprobado debe ser mayor a cero.")],
     )
     fecha_solicitud = models.DateField(verbose_name="Fecha de solicitud")
     fecha_consignacion = models.DateField(
@@ -69,6 +89,18 @@ class Legalizacion(models.Model):
         verbose_name_plural = "Legalizaciones"
         ordering = ["-fecha_solicitud", "-creado_en"]
 
+    def clean(self):
+        errors = {}
+        if self.monto_aprobado is not None and self.monto_aprobado <= 0:
+            errors["monto_aprobado"] = "El monto aprobado debe ser mayor a cero."
+        if self.fecha_consignacion and self.fecha_solicitud:
+            if self.fecha_consignacion < self.fecha_solicitud:
+                errors["fecha_consignacion"] = (
+                    "La fecha de consignación no puede ser anterior a la fecha de solicitud."
+                )
+        if errors:
+            raise ValidationError(errors)
+
     def __str__(self):
         return f"Legalización {self.numero} ({self.get_estado_display()})"
 
@@ -96,13 +128,41 @@ class Gasto(models.Model):
         max_length=255,
         verbose_name="Cliente / Proveedor",
     )
-    cedula_nit = models.CharField(max_length=32, verbose_name="Cédula / NIT")
+    cedula_nit = models.CharField(
+        max_length=32,
+        verbose_name="Cédula / NIT",
+        validators=[validar_cedula_nit],
+    )
     numero_factura = models.CharField(max_length=64, verbose_name="Número de factura")
     centro_costos = models.CharField(max_length=64, verbose_name="Centro de costos")
+    valor_base = models.DecimalField(
+        max_digits=14,
+        decimal_places=2,
+        default=Decimal("0.00"),
+        verbose_name="Valor base",
+        validators=[MinValueValidator(Decimal("0.01"), message="El valor base debe ser mayor a cero.")],
+    )
+    iva = models.DecimalField(
+        max_digits=14,
+        decimal_places=2,
+        default=Decimal("0.00"),
+        verbose_name="IVA",
+        validators=[MinValueValidator(Decimal("0"), message="El IVA no puede ser negativo.")],
+    )
     valor = models.DecimalField(
         max_digits=14,
         decimal_places=2,
-        verbose_name="Valor",
+        default=Decimal("0.00"),
+        editable=False,
+        verbose_name="Valor total",
+        help_text="Calculado automáticamente: valor_base + IVA",
+    )
+    archivo_factura = models.FileField(
+        upload_to="facturas/%Y/%m/",
+        null=True,
+        blank=True,
+        verbose_name="Archivo factura",
+        help_text="Foto (JPG/PNG) o PDF de la factura",
     )
     observaciones = models.TextField(
         null=True,
@@ -120,6 +180,21 @@ class Gasto(models.Model):
             models.Index(fields=["legalizacion", "fecha"]),
             models.Index(fields=["centro_costos"]),
         ]
+
+    def clean(self):
+        errors = {}
+        if self.valor_base is not None and self.valor_base <= 0:
+            errors["valor_base"] = "El valor base debe ser mayor a cero."
+        if self.iva is not None and self.iva < 0:
+            errors["iva"] = "El IVA no puede ser negativo."
+        if self.fecha and self.fecha > date.today():
+            errors["fecha"] = "La fecha del gasto no puede ser en el futuro."
+        if errors:
+            raise ValidationError(errors)
+
+    def save(self, *args, **kwargs):
+        self.valor = (self.valor_base or Decimal("0.00")) + (self.iva or Decimal("0.00"))
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"{self.numero_factura} - {self.cliente_proveedor} (${self.valor})"
