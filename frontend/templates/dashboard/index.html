@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load formato %}
 {% block title %}Dashboard{% endblock %}
 {% block page_title %}Dashboard{% endblock %}
 
@@ -52,7 +53,7 @@
       </div>
       <div>
         <p class="text-2xl font-bold text-slate-900">
-          ${{ stats.monto_total|default:0|floatformat:0 }}
+          ${{ stats.monto_total|default:0|cop }}
         </p>
         <p class="text-xs text-slate-500 mt-0.5">Monto Total</p>
       </div>
@@ -81,7 +82,7 @@
       </div>
       <div>
         <p class="text-2xl font-bold {% if stats.saldo_total and stats.saldo_total < 0 %}text-red-600{% else %}text-emerald-600{% endif %}">
-          ${{ stats.saldo_total|default:0|floatformat:0 }}
+          ${{ stats.saldo_total|default:0|cop }}
         </p>
         <p class="text-xs text-slate-500 mt-0.5">Saldo Total Acumulado</p>
       </div>
@@ -110,9 +111,9 @@
         </div>
         <div class="flex items-center gap-4">
           <div class="text-right hidden sm:block">
-            <p class="text-sm font-semibold text-slate-800">${{ leg.monto_aprobado|floatformat:0 }}</p>
+            <p class="text-sm font-semibold text-slate-800">${{ leg.monto_aprobado|cop }}</p>
             <p class="text-xs {% if leg.saldo < 0 %}text-red-500{% else %}text-emerald-500{% endif %}">
-              Saldo: ${{ leg.saldo|floatformat:0 }}
+              Saldo: ${{ leg.saldo|cop }}
             </p>
           </div>
           <span class="badge-{{ leg.estado|lower }}">{{ leg.get_estado_display }}</span>

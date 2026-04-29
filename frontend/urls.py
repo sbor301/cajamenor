@@ -12,5 +12,6 @@ urlpatterns = [
     path("legalizaciones/<uuid:pk>/aprobar/", views.legalizacion_aprobar, name="legalizacion_aprobar"),
     path("legalizaciones/<uuid:pk>/rechazar/", views.legalizacion_rechazar, name="legalizacion_rechazar"),
     path("legalizaciones/<uuid:pk>/enviar/", views.legalizacion_enviar, name="legalizacion_enviar"),
+    path("legalizaciones/<uuid:pk>/consignacion/", views.legalizacion_set_consignacion, name="legalizacion_set_consignacion"),
     path("legalizaciones/ocr/", views.ocr_factura, name="ocr_factura"),
 ]

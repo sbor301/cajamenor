@@ -1,3 +1,4 @@
+{% load formato %}
 {% if legalizaciones %}
 <div class="overflow-x-auto">
   <table class="w-full text-sm">
@@ -26,9 +27,9 @@
           </div>
         </td>
         <td class="px-6 py-4 text-slate-600">{{ leg.fecha_solicitud|date:"d/m/Y" }}</td>
-        <td class="px-6 py-4 text-right font-medium text-slate-800">${{ leg.monto_aprobado|floatformat:0 }}</td>
+        <td class="px-6 py-4 text-right font-medium text-slate-800">${{ leg.monto_aprobado|cop }}</td>
         <td class="px-6 py-4 text-right font-semibold {% if leg.saldo < 0 %}text-red-600{% else %}text-emerald-600{% endif %}">
-          ${{ leg.saldo|floatformat:0 }}
+          ${{ leg.saldo|cop }}
         </td>
         <td class="px-6 py-4 text-center">
           <span class="badge-{{ leg.estado|lower }}">{{ leg.get_estado_display }}</span>

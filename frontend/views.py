@@ -111,12 +111,11 @@ def legalizacion_create(request):
             monto = request.POST.get("monto_aprobado")
             fecha = request.POST.get("fecha_solicitud")
             estado = request.POST.get("estado", Legalizacion.Estado.BORRADOR)
-            fecha_consignacion = request.POST.get("fecha_consignacion") or None
 
             leg = Legalizacion.objects.create(
                 monto_aprobado=Decimal(monto),
                 fecha_solicitud=fecha,
-                fecha_consignacion=fecha_consignacion,
+                fecha_consignacion=None,   # solo la asigna el aprobador
                 elaboro=request.user,
                 estado=estado,
             )
@@ -168,9 +167,13 @@ def legalizacion_detail(request, pk):
         messages.error(request, "No tienes permiso para ver esta legalización.")
         return redirect("legalizacion_list")
 
+    gastos = leg.gastos.all()
+    total_gastos = gastos.aggregate(t=Sum("valor"))["t"] or Decimal("0")
+
     context = {
         "leg": leg,
-        "gastos": leg.gastos.all(),
+        "gastos": gastos,
+        "total_gastos": total_gastos,
         "es_aprobador": es_aprobador,
         "puede_editar": leg.estado in (Legalizacion.Estado.BORRADOR, Legalizacion.Estado.ENVIADO),
     }
@@ -206,6 +209,38 @@ def legalizacion_rechazar(request, pk):
     leg.aprobado_por = user
     leg.save()
     messages.error(request, "Legalización rechazada.")
+    return redirect("legalizacion_detail", pk=pk)
+
+
+@login_required
+@require_POST
+def legalizacion_set_consignacion(request, pk):
+    """Solo aprobadores pueden registrar la fecha de consignación."""
+    user = request.user
+    es_aprobador = user.is_superuser or user.groups.filter(name="Aprobadores").exists()
+    if not es_aprobador:
+        messages.error(request, "No tienes permiso para registrar la fecha de consignación.")
+        return redirect("legalizacion_detail", pk=pk)
+
+    leg = get_object_or_404(Legalizacion, pk=pk)
+    fecha = request.POST.get("fecha_consignacion", "").strip()
+
+    if not fecha:
+        messages.error(request, "Debes ingresar una fecha de consignación válida.")
+        return redirect("legalizacion_detail", pk=pk)
+
+    from datetime import datetime
+    try:
+        f = datetime.strptime(fecha, "%Y-%m-%d").date()
+        if f < leg.fecha_solicitud:
+            messages.error(request, "La fecha de consignación no puede ser anterior a la fecha de solicitud.")
+            return redirect("legalizacion_detail", pk=pk)
+        leg.fecha_consignacion = f
+        leg.save()
+        messages.success(request, "Fecha de consignación registrada correctamente.")
+    except ValueError:
+        messages.error(request, "Formato de fecha inválido.")
+
     return redirect("legalizacion_detail", pk=pk)
 
 
