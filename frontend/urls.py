@@ -1,5 +1,5 @@
 from django.urls import path
-from . import views
+from . import views, views_solicitudes as vs
 
 urlpatterns = [
     path("", views.login_view, name="login"),
@@ -25,4 +25,17 @@ urlpatterns = [
     path("notificaciones/api/", views.notificaciones_api, name="notificaciones_api"),
     path("notificaciones/marcar-todas/", views.notificaciones_marcar_todas, name="notificaciones_marcar_todas"),
     path("notificaciones/<int:pk>/leer/", views.notificacion_leer, name="notificacion_leer"),
+
+    # Solicitudes de caja
+    path("solicitudes/",                          vs.solicitud_list,         name="solicitud_list"),
+    path("solicitudes/nueva/",                    vs.solicitud_create,       name="solicitud_create"),
+    path("solicitudes/<uuid:pk>/",                vs.solicitud_detail,       name="solicitud_detail"),
+    path("solicitudes/<uuid:pk>/enviar/",         vs.solicitud_enviar,       name="solicitud_enviar"),
+    path("solicitudes/<uuid:pk>/aprobar-area/",   vs.solicitud_aprobar_area, name="solicitud_aprobar_area"),
+    path("solicitudes/<uuid:pk>/aprobar-corp/",   vs.solicitud_aprobar_corp, name="solicitud_aprobar_corp"),
+    path("solicitudes/<uuid:pk>/rechazar/",       vs.solicitud_rechazar,     name="solicitud_rechazar"),
+    path("solicitudes/<uuid:pk>/desembolsar/",    vs.solicitud_desembolsar,  name="solicitud_desembolsar"),
+
+    # Perfil del empleado
+    path("perfil/", vs.perfil_editar, name="perfil_editar"),
 ]

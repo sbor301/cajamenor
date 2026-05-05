@@ -1,0 +1,272 @@
+{% extends "base.html" %}
+{% load formato %}
+{% block title %}{{ sol.codigo }}{% endblock %}
+{% block page_title %}{{ sol.codigo }}{% endblock %}
+
+{% block content %}
+<div class="space-y-5">
+
+  <!-- Cabecera -->
+  <div class="bg-white rounded-2xl border border-slate-200 p-6">
+    <div class="flex flex-wrap items-start justify-between gap-4">
+      <div>
+        <p class="text-xs uppercase tracking-wider text-slate-400 font-medium">Solicitud de caja</p>
+        <h1 class="text-2xl font-bold text-slate-900 mt-1">{{ sol.codigo }}</h1>
+        <p class="text-sm text-slate-500 mt-0.5">N° de caja: <span class="font-mono">{{ sol.numero_caja }}</span></p>
+      </div>
+      <div class="text-right">
+        {% with e=sol.estado %}
+        <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold
+          {% if e == 'BORRADOR' %}bg-slate-100 text-slate-700
+          {% elif e == 'PEND_AREA' %}bg-amber-50 text-amber-700
+          {% elif e == 'PEND_CORP' %}bg-blue-50 text-blue-700
+          {% elif e == 'APROBADA' %}bg-emerald-50 text-emerald-700
+          {% elif e == 'DESEMBOLSADA' %}bg-indigo-50 text-indigo-700
+          {% elif e == 'LEGALIZADA' %}bg-teal-50 text-teal-700
+          {% elif e == 'RECHAZADA' %}bg-red-50 text-red-700
+          {% endif %}">
+          {{ sol.get_estado_display }}
+        </span>
+        {% endwith %}
+        <p class="text-xs text-slate-400 mt-2">Solicitado el {{ sol.fecha_solicitud|date:"d M Y" }}</p>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-5 mt-6 pt-5 border-t border-slate-100">
+      <div>
+        <p class="text-xs text-slate-500 mb-0.5">Solicitante</p>
+        <p class="text-sm font-semibold text-slate-900">{{ sol.nombre_completo }}</p>
+        <p class="text-xs text-slate-400">CC {{ sol.cedula }}</p>
+      </div>
+      <div>
+        <p class="text-xs text-slate-500 mb-0.5">Ciudad</p>
+        <p class="text-sm font-semibold text-slate-900">{{ sol.ciudad }}</p>
+      </div>
+      <div>
+        <p class="text-xs text-slate-500 mb-0.5">Valor solicitado</p>
+        <p class="text-lg font-bold text-slate-900">${{ sol.valor_caja|cop }}</p>
+      </div>
+      <div>
+        <p class="text-xs text-slate-500 mb-0.5">Cuenta bancaria</p>
+        <p class="text-sm font-semibold text-slate-900">{{ sol.entidad_bancaria }}</p>
+        <p class="text-xs text-slate-400 font-mono">{{ sol.get_tipo_cuenta_display }} · {{ sol.numero_cuenta }}</p>
+      </div>
+    </div>
+  </div>
+
+  {% if sol.motivo_rechazo %}
+  <div class="bg-red-50 border border-red-200 rounded-2xl p-5">
+    <div class="flex items-start gap-3">
+      <svg class="w-5 h-5 text-red-600 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+      </svg>
+      <div>
+        <p class="text-sm font-semibold text-red-800">Motivo de rechazo</p>
+        <p class="text-sm text-red-700 mt-1">{{ sol.motivo_rechazo }}</p>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Items previstos -->
+  <div class="bg-white rounded-2xl border border-slate-200 overflow-hidden">
+    <div class="px-6 py-4 border-b border-slate-100">
+      <h2 class="font-semibold text-slate-900">Ítems previstos</h2>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead class="bg-slate-50 text-xs text-slate-500 uppercase tracking-wider">
+          <tr>
+            <th class="text-left px-5 py-2.5 font-medium">Ítem</th>
+            <th class="text-left px-5 py-2.5 font-medium">Centro de costos</th>
+            <th class="text-right px-5 py-2.5 font-medium">Cantidad</th>
+            <th class="text-right px-5 py-2.5 font-medium">Valor unitario</th>
+            <th class="text-right px-5 py-2.5 font-medium">Total</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-50">
+          {% for it in items %}
+          <tr>
+            <td class="px-5 py-3 text-slate-900 font-medium">
+              {{ it.get_item_display }}
+              {% if it.observaciones %}
+              <p class="text-xs text-slate-500 italic mt-0.5">{{ it.observaciones }}</p>
+              {% endif %}
+            </td>
+            <td class="px-5 py-3 text-slate-600">{{ it.centro_costo.codigo }} — {{ it.centro_costo.nombre }}</td>
+            <td class="px-5 py-3 text-right text-slate-700 tabular-nums">{{ it.cantidad }}</td>
+            <td class="px-5 py-3 text-right text-slate-700 tabular-nums">${{ it.valor_unitario|cop }}</td>
+            <td class="px-5 py-3 text-right font-semibold text-slate-900 tabular-nums">${{ it.total|cop }}</td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="5" class="px-5 py-8 text-center text-slate-400 text-sm">Sin ítems</td></tr>
+          {% endfor %}
+        </tbody>
+        <tfoot class="bg-slate-50 font-bold">
+          <tr>
+            <td colspan="4" class="px-5 py-3 text-right text-xs text-slate-500 uppercase tracking-wider">Total previsto</td>
+            <td class="px-5 py-3 text-right text-slate-900 tabular-nums">${{ total_items|cop }}</td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  </div>
+
+  {% if sol.observaciones %}
+  <div class="bg-white rounded-2xl border border-slate-200 p-5">
+    <p class="text-xs text-slate-500 uppercase tracking-wider font-medium mb-2">Observaciones</p>
+    <p class="text-sm text-slate-700 whitespace-pre-line">{{ sol.observaciones }}</p>
+  </div>
+  {% endif %}
+
+  <!-- Firmas -->
+  <div class="bg-white rounded-2xl border border-slate-200 p-6">
+    <h2 class="font-semibold text-slate-900 mb-4">Firmas y autorizaciones</h2>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+      {# Empleado #}
+      <div class="border border-slate-100 rounded-xl p-4">
+        <p class="text-xs text-slate-500 uppercase tracking-wider font-medium mb-2">Empleado</p>
+        <div class="h-24 bg-slate-50 rounded-lg flex items-center justify-center mb-2">
+          {% if sol.firma_empleado %}
+            <img src="{{ sol.firma_empleado.url }}" alt="Firma empleado" class="max-h-20 max-w-full">
+          {% else %}
+            <span class="text-xs text-slate-300 italic">Sin firma</span>
+          {% endif %}
+        </div>
+        <p class="text-sm font-medium text-slate-900">{{ sol.nombre_completo }}</p>
+        <p class="text-xs text-slate-400">{% if sol.firma_empleado_fecha %}{{ sol.firma_empleado_fecha|date:"d M Y" }}{% else %}—{% endif %}</p>
+      </div>
+
+      {# Gerencia Área #}
+      <div class="border border-slate-100 rounded-xl p-4">
+        <p class="text-xs text-slate-500 uppercase tracking-wider font-medium mb-2">Gerencia de Área</p>
+        <div class="h-24 bg-slate-50 rounded-lg flex items-center justify-center mb-2">
+          {% if sol.firma_area %}
+            <img src="{{ sol.firma_area.url }}" alt="Firma área" class="max-h-20 max-w-full">
+          {% else %}
+            <span class="text-xs text-slate-300 italic">Pendiente</span>
+          {% endif %}
+        </div>
+        <p class="text-sm font-medium text-slate-900">
+          {% if sol.aprobador_area %}{{ sol.aprobador_area.get_full_name|default:sol.aprobador_area.username }}{% else %}—{% endif %}
+        </p>
+        <p class="text-xs text-slate-400">{% if sol.firma_area_fecha %}{{ sol.firma_area_fecha|date:"d M Y" }}{% else %}—{% endif %}</p>
+      </div>
+
+      {# Gerencia Corporativa #}
+      <div class="border border-slate-100 rounded-xl p-4">
+        <p class="text-xs text-slate-500 uppercase tracking-wider font-medium mb-2">Gerencia Corporativa</p>
+        <div class="h-24 bg-slate-50 rounded-lg flex items-center justify-center mb-2">
+          {% if sol.firma_corp %}
+            <img src="{{ sol.firma_corp.url }}" alt="Firma corporativa" class="max-h-20 max-w-full">
+          {% else %}
+            <span class="text-xs text-slate-300 italic">Pendiente</span>
+          {% endif %}
+        </div>
+        <p class="text-sm font-medium text-slate-900">
+          {% if sol.aprobador_corp %}{{ sol.aprobador_corp.get_full_name|default:sol.aprobador_corp.username }}{% else %}—{% endif %}
+        </p>
+        <p class="text-xs text-slate-400">{% if sol.firma_corp_fecha %}{{ sol.firma_corp_fecha|date:"d M Y" }}{% else %}—{% endif %}</p>
+      </div>
+    </div>
+  </div>
+
+  {% if sol.fecha_desembolso %}
+  <div class="bg-indigo-50 border border-indigo-200 rounded-2xl p-5">
+    <div class="flex items-start gap-3">
+      <svg class="w-5 h-5 text-indigo-600 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+      </svg>
+      <div>
+        <p class="text-sm font-semibold text-indigo-900">Desembolso registrado</p>
+        <p class="text-sm text-indigo-700 mt-1">Fondos consignados el {{ sol.fecha_desembolso|date:"d M Y" }}.</p>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Acciones contextuales -->
+  {% if puede_enviar or puede_aprob_area or puede_aprob_corp or puede_rechazar or puede_desembolsar %}
+  <div class="bg-white rounded-2xl border border-slate-200 p-6 space-y-4">
+    <h2 class="font-semibold text-slate-900">Acciones disponibles</h2>
+
+    {% if puede_enviar %}
+    <form method="post" action="{% url 'solicitud_enviar' sol.pk %}" enctype="multipart/form-data" class="space-y-3 border border-slate-100 rounded-xl p-4">
+      {% csrf_token %}
+      <p class="text-sm font-medium text-slate-900">Firmar y enviar a Gerencia Área</p>
+      <input type="file" name="firma_empleado" required accept="image/png,image/jpeg,image/webp"
+             class="block text-sm text-slate-600 file:mr-3 file:px-3 file:py-1.5 file:bg-slate-100 file:border-0 file:rounded-md file:text-xs file:font-medium hover:file:bg-slate-200">
+      <button type="submit" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg">
+        Enviar a Gerencia Área
+      </button>
+    </form>
+    {% endif %}
+
+    {% if puede_aprob_area %}
+    <form method="post" action="{% url 'solicitud_aprobar_area' sol.pk %}" enctype="multipart/form-data" class="space-y-3 border border-emerald-200 bg-emerald-50/30 rounded-xl p-4">
+      {% csrf_token %}
+      <p class="text-sm font-medium text-emerald-900">Aprobar como Gerencia de Área</p>
+      <input type="file" name="firma_area" required accept="image/png,image/jpeg,image/webp"
+             class="block text-sm text-slate-600 file:mr-3 file:px-3 file:py-1.5 file:bg-white file:border file:border-slate-200 file:rounded-md file:text-xs file:font-medium">
+      <button type="submit" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-lg">
+        Firmar y aprobar
+      </button>
+    </form>
+    {% endif %}
+
+    {% if puede_aprob_corp %}
+    <form method="post" action="{% url 'solicitud_aprobar_corp' sol.pk %}" enctype="multipart/form-data" class="space-y-3 border border-emerald-200 bg-emerald-50/30 rounded-xl p-4">
+      {% csrf_token %}
+      <p class="text-sm font-medium text-emerald-900">Aprobar como Gerencia Corporativa</p>
+      <input type="file" name="firma_corp" required accept="image/png,image/jpeg,image/webp"
+             class="block text-sm text-slate-600 file:mr-3 file:px-3 file:py-1.5 file:bg-white file:border file:border-slate-200 file:rounded-md file:text-xs file:font-medium">
+      <button type="submit" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-lg">
+        Firmar y aprobar
+      </button>
+    </form>
+    {% endif %}
+
+    {% if puede_rechazar %}
+    <form method="post" action="{% url 'solicitud_rechazar' sol.pk %}" class="space-y-3 border border-red-200 bg-red-50/30 rounded-xl p-4">
+      {% csrf_token %}
+      <p class="text-sm font-medium text-red-900">Rechazar solicitud</p>
+      <textarea name="motivo" required rows="2" placeholder="Motivo del rechazo (visible para el solicitante)…"
+                class="w-full px-3 py-2 border border-red-200 rounded-lg text-sm focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none bg-white"></textarea>
+      <button type="submit" onclick="return confirm('¿Rechazar definitivamente esta solicitud?')"
+              class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-lg">
+        Rechazar
+      </button>
+    </form>
+    {% endif %}
+
+    {% if puede_desembolsar %}
+    <form method="post" action="{% url 'solicitud_desembolsar' sol.pk %}" class="space-y-3 border border-indigo-200 bg-indigo-50/30 rounded-xl p-4">
+      {% csrf_token %}
+      <p class="text-sm font-medium text-indigo-900">Registrar desembolso</p>
+      <p class="text-xs text-indigo-700">El plazo de legalización (8 días hábiles) se calcula desde esta fecha.</p>
+      <input type="date" name="fecha_desembolso" required
+             class="px-3 py-2 border border-indigo-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none bg-white">
+      <button type="submit" class="ml-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg">
+        Marcar como desembolsada
+      </button>
+    </form>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  <!-- Link a legalización si existe -->
+  {% if sol.legalizacion %}
+  <div class="bg-teal-50 border border-teal-200 rounded-2xl p-5 flex items-center justify-between">
+    <div>
+      <p class="text-sm font-semibold text-teal-900">Legalización vinculada</p>
+      <p class="text-sm text-teal-700">{{ sol.legalizacion.codigo }}</p>
+    </div>
+    <a href="{% url 'legalizacion_detail' sol.legalizacion.numero %}"
+       class="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white text-sm font-medium rounded-lg">
+      Ver legalización
+    </a>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}

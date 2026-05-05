@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+{% load formato %}
+{% block title %}Solicitudes de Caja{% endblock %}
+{% block page_title %}Solicitudes de Caja{% endblock %}
+
+{% block content %}
+<div class="space-y-5">
+
+  <!-- Header con acción y filtros -->
+  <div class="flex flex-wrap items-center justify-between gap-3">
+    <p class="text-sm text-slate-400">
+      {{ solicitudes|length }} solicitud{{ solicitudes|length|pluralize:"es" }}
+    </p>
+    <div class="flex items-center gap-2">
+      <form method="get" class="flex items-center gap-2">
+        <select name="estado"
+                onchange="this.form.submit()"
+                class="text-sm border border-slate-200 rounded-lg px-3 py-1.5 bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none">
+          <option value="">Todos los estados</option>
+          {% for value, label in estados %}
+            <option value="{{ value }}" {% if filtro == value %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </form>
+      <a href="{% url 'solicitud_create' %}"
+         class="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition-colors">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+        </svg>
+        Nueva solicitud
+      </a>
+    </div>
+  </div>
+
+  {% if solicitudes %}
+  <div class="bg-white rounded-2xl border border-slate-200 overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead class="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider">
+          <tr>
+            <th class="text-left px-5 py-3 font-medium">Código</th>
+            <th class="text-left px-5 py-3 font-medium">N° Caja</th>
+            <th class="text-left px-5 py-3 font-medium">Solicitante</th>
+            <th class="text-left px-5 py-3 font-medium">Fecha</th>
+            <th class="text-right px-5 py-3 font-medium">Valor</th>
+            <th class="text-left px-5 py-3 font-medium">Estado</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-50">
+          {% for s in solicitudes %}
+          <tr class="hover:bg-slate-50 transition-colors cursor-pointer"
+              onclick="window.location='{% url 'solicitud_detail' s.pk %}'">
+            <td class="px-5 py-3.5 font-medium text-slate-900">{{ s.codigo }}</td>
+            <td class="px-5 py-3.5 text-slate-600 font-mono text-xs">{{ s.numero_caja }}</td>
+            <td class="px-5 py-3.5 text-slate-700">{{ s.nombre_completo|default:s.solicitante }}</td>
+            <td class="px-5 py-3.5 text-slate-500">{{ s.fecha_solicitud|date:"d M Y" }}</td>
+            <td class="px-5 py-3.5 text-right font-semibold text-slate-900">${{ s.valor_caja|cop }}</td>
+            <td class="px-5 py-3.5">
+              {% with e=s.estado %}
+              <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium
+                {% if e == 'BORRADOR' %}bg-slate-100 text-slate-700
+                {% elif e == 'PEND_AREA' %}bg-amber-50 text-amber-700
+                {% elif e == 'PEND_CORP' %}bg-blue-50 text-blue-700
+                {% elif e == 'APROBADA' %}bg-emerald-50 text-emerald-700
+                {% elif e == 'DESEMBOLSADA' %}bg-indigo-50 text-indigo-700
+                {% elif e == 'LEGALIZADA' %}bg-teal-50 text-teal-700
+                {% elif e == 'RECHAZADA' %}bg-red-50 text-red-700
+                {% endif %}">
+                {{ s.get_estado_display }}
+              </span>
+              {% endwith %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% else %}
+  <div class="bg-white rounded-2xl border border-slate-200 px-6 py-16 text-center">
+    <svg class="w-12 h-12 text-slate-200 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+    </svg>
+    <p class="text-base font-semibold text-slate-700">Sin solicitudes</p>
+    <p class="text-sm text-slate-400 mt-1">Crea tu primera solicitud de caja para empezar.</p>
+    <a href="{% url 'solicitud_create' %}"
+       class="inline-flex items-center gap-2 mt-5 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition-colors">
+      Nueva solicitud
+    </a>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
