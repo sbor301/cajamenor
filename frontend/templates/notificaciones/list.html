@@ -34,6 +34,7 @@
         {% elif n.tipo == 'APROBADA' %}bg-emerald-50 text-emerald-500
         {% elif n.tipo == 'RECHAZADA' or n.tipo == 'GASTO_RECHAZADO' %}bg-red-50 text-red-500
         {% elif n.tipo == 'DEVUELTA' %}bg-orange-50 text-orange-500
+        {% elif n.tipo == 'ALERTA_CIERRE' %}bg-yellow-50 text-yellow-600
         {% else %}bg-slate-50 text-slate-400{% endif %}">
         {% if n.tipo == 'ENVIADA' %}
           <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -54,6 +55,10 @@
         {% elif n.tipo == 'DEVUELTA' %}
           <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/>
+          </svg>
+        {% elif n.tipo == 'ALERTA_CIERRE' %}
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
           </svg>
         {% endif %}
       </div>

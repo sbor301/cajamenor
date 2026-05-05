@@ -5,7 +5,17 @@
       "PowerShell(npx skills add https://github.com/anthropics/skills --skill frontend-design)",
       "PowerShell($env:Path = [System.Environment]::GetEnvironmentVariable\\(\"Path\",\"Machine\"\\) + \";\" + [System.Environment]::GetEnvironmentVariable\\(\"Path\",\"User\"\\); npx skills add https://github.com/anthropics/skills --skill frontend-design)",
       "Bash(.venv/Scripts/pip.exe list *)",
-      "Bash(.venv/Scripts/pip.exe install *)"
+      "Bash(.venv/Scripts/pip.exe install *)",
+      "Read(//c/Users/ANALISTA TIC/.claude/skills/ui-ux-pro-max/**)",
+      "Bash(python scripts/search.py \"enterprise internal tool finance expense management professional\" --design-system -p \"CajaMenor\" -f markdown)",
+      "Bash(python .venv/Scripts/python.exe -c \"import sys; print\\(sys.version\\)\")",
+      "Bash(py -0)",
+      "PowerShell(cd C:\\\\Proyectos\\\\CajaMenor; $env:DJANGO_SETTINGS_MODULE=\"cajamenor.settings\"; .venv\\\\Scripts\\\\python.exe -c \"import django; django.setup\\(\\); import legalizaciones.models; import legalizaciones.serializers; print\\('OK - sin errores'\\)\")",
+      "PowerShell(& \"C:\\\\Program Files\\\\Tesseract-OCR\\\\tesseract.exe\" --list-langs)",
+      "PowerShell(\\(Get-Content \"C:\\\\Proyectos\\\\CajaMenor\\\\frontend\\\\templates\\\\legalizaciones\\\\detail.html\"\\) -replace '\\\\|floatformat:0', '|cop' | Set-Content \"C:\\\\Proyectos\\\\CajaMenor\\\\frontend\\\\templates\\\\legalizaciones\\\\detail.html\" -Encoding utf8)",
+      "Bash(.venv\\\\Scripts\\\\python.exe -c \"from frontend.templatetags import formato; print\\('OK:', formato.register\\)\")",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)"
     ]
   }
 }

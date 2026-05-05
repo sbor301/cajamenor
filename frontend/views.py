@@ -1,3 +1,4 @@
+from datetime import date
 from decimal import Decimal
 
 from django.contrib import messages
@@ -132,12 +133,16 @@ def legalizacion_create(request):
     if request.method == "POST":
         try:
             monto = request.POST.get("monto_aprobado")
-            fecha = request.POST.get("fecha_solicitud")
+            fecha = date.today()   # siempre la fecha real del servidor
+            periodo_desde = request.POST.get("periodo_desde") or None
+            periodo_hasta = request.POST.get("periodo_hasta") or None
 
             leg = Legalizacion.objects.create(
                 monto_aprobado=Decimal(monto),
                 fecha_solicitud=fecha,
-                fecha_consignacion=None,   # solo la asigna el aprobador
+                periodo_desde=periodo_desde,
+                periodo_hasta=periodo_hasta,
+                fecha_consignacion=None,
                 elaboro=request.user,
                 estado=Legalizacion.Estado.BORRADOR,  # siempre inicia en Borrador
             )
@@ -194,10 +199,10 @@ def legalizacion_detail(request, pk):
         gastos.filter(rechazado=False).aggregate(t=Sum("valor"))["t"] or Decimal("0")
     )
 
-    # ¿Puede el empleado editar gastos rechazados? Solo en estado DEVUELTO y si es el elaborador
+    # ¿Puede el empleado editar gastos? En BORRADOR o DEVUELTO, si es el elaborador
     puede_editar_gastos = (
         not es_aprobador
-        and leg.estado == Legalizacion.Estado.DEVUELTO
+        and leg.estado in (Legalizacion.Estado.BORRADOR, Legalizacion.Estado.DEVUELTO)
         and leg.elaboro == user
     )
 
@@ -298,6 +303,67 @@ def legalizacion_set_consignacion(request, pk):
 
 @login_required
 @require_POST
+def legalizacion_editar_cabecera(request, pk):
+    """Empleado edita monto y período de caja mientras la legalización está en BORRADOR o DEVUELTO."""
+    leg = get_object_or_404(Legalizacion, pk=pk, elaboro=request.user)
+
+    if leg.estado not in (Legalizacion.Estado.BORRADOR, Legalizacion.Estado.DEVUELTO):
+        messages.error(request, "Solo se pueden editar los datos en estado Borrador o Devuelto.")
+        return redirect("legalizacion_detail", pk=pk)
+
+    try:
+        monto = request.POST.get("monto_aprobado", "").strip()
+        periodo_desde = request.POST.get("periodo_desde", "").strip() or None
+        periodo_hasta = request.POST.get("periodo_hasta", "").strip() or None
+
+        if not monto or Decimal(monto) <= 0:
+            messages.error(request, "El monto aprobado debe ser mayor a cero.")
+            return redirect("legalizacion_detail", pk=pk)
+
+        leg.monto_aprobado = Decimal(monto)
+        leg.periodo_desde = periodo_desde
+        leg.periodo_hasta = periodo_hasta
+        leg.full_clean()
+        leg.save()
+        leg.recalcular_saldo(save=True)
+        messages.success(request, "Datos de la legalización actualizados.")
+    except Exception as e:
+        messages.error(request, f"Error al guardar: {e}")
+
+    return redirect("legalizacion_detail", pk=pk)
+
+
+@login_required
+@require_POST
+def legalizacion_set_cierre(request, pk):
+    """Solo aprobadores pueden registrar la fecha de cierre."""
+    user = request.user
+    es_aprobador = user.is_superuser or user.groups.filter(name="Aprobadores").exists()
+    if not es_aprobador:
+        messages.error(request, "No tienes permiso para registrar la fecha de cierre.")
+        return redirect("legalizacion_detail", pk=pk)
+
+    leg = get_object_or_404(Legalizacion, pk=pk)
+    fecha = request.POST.get("fecha_cierre", "").strip()
+
+    if not fecha:
+        messages.error(request, "Debes ingresar una fecha de cierre válida.")
+        return redirect("legalizacion_detail", pk=pk)
+
+    from datetime import datetime
+    try:
+        f = datetime.strptime(fecha, "%Y-%m-%d").date()
+        leg.fecha_cierre = f
+        leg.save()
+        messages.success(request, "Fecha de cierre registrada correctamente.")
+    except ValueError:
+        messages.error(request, "Formato de fecha inválido.")
+
+    return redirect("legalizacion_detail", pk=pk)
+
+
+@login_required
+@require_POST
 def ocr_factura(request):
     """Analiza una factura (foto o PDF) con OCR y devuelve los campos detectados."""
     archivo = request.FILES.get("archivo")
@@ -378,8 +444,8 @@ def gasto_editar(request, pk):
         messages.error(request, "No tienes permiso para editar este gasto.")
         return redirect("legalizacion_detail", pk=leg.pk)
 
-    if leg.estado != Legalizacion.Estado.DEVUELTO:
-        messages.error(request, "Solo se pueden editar gastos de legalizaciones devueltas para corrección.")
+    if leg.estado not in (Legalizacion.Estado.BORRADOR, Legalizacion.Estado.DEVUELTO):
+        messages.error(request, "Solo se pueden editar gastos de legalizaciones en borrador o devueltas para corrección.")
         return redirect("legalizacion_detail", pk=leg.pk)
 
     if request.method == "POST":
@@ -514,11 +580,16 @@ def notificacion_leer(request, pk):
 @login_required
 @require_POST
 def notificaciones_marcar_todas(request):
-    """Marca todas las notificaciones del usuario como leídas."""
+    """Marca todas las notificaciones del usuario como leídas.
+    - Fetch/AJAX (dropdown): devuelve JSON.
+    - Form normal (página de notificaciones): redirige de vuelta.
+    """
     Notificacion.objects.filter(
         destinatario=request.user, leida=False
     ).update(leida=True)
-    return JsonResponse({"ok": True})
+    if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+        return JsonResponse({"ok": True})
+    return redirect("notificaciones_list")
 
 
 @login_required

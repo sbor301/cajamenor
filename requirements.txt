@@ -9,3 +9,5 @@ gunicorn>=22.0
 Pillow>=10.0
 pdfplumber>=0.11
 pytesseract>=0.3.10
+apscheduler>=3.10
+holidays>=0.50
