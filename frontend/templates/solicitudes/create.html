@@ -233,11 +233,9 @@
 
   <!-- Firma del empleado (solo al enviar) -->
   <div class="bg-white rounded-2xl border border-slate-200 p-6">
-    <label class="block text-sm font-semibold text-slate-900 mb-1">Firma del empleado</label>
-    <p class="text-xs text-slate-500 mb-3">Requerida solo si vas a <strong>enviar</strong> la solicitud. Para guardar como borrador no es obligatoria.</p>
-    <input type="file" name="firma_empleado" accept="image/png,image/jpeg,image/webp"
-           class="block text-sm text-slate-600 file:mr-3 file:px-4 file:py-2 file:bg-slate-100 file:border-0 file:rounded-lg file:text-sm file:font-medium file:text-slate-700 hover:file:bg-slate-200">
-    <p class="text-[11px] text-slate-400 mt-2">PNG, JPG o WEBP. Máx 2 MB. (Próximamente: dibujar con el dedo o mouse).</p>
+    <p class="text-sm font-semibold text-slate-900 mb-1">Firma del empleado</p>
+    <p class="text-xs text-slate-500 mb-4">Requerida solo si vas a <strong>enviar</strong> la solicitud. Para guardar como borrador puedes omitirla.</p>
+    {% include "partials/firma_pad.html" with campo="firma_empleado" label="" requerida=False firma_guardada_url=firma_guardada_url %}
   </div>
 
   <!-- Acciones -->

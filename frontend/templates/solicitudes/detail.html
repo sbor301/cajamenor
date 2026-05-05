@@ -191,11 +191,10 @@
     <h2 class="font-semibold text-slate-900">Acciones disponibles</h2>
 
     {% if puede_enviar %}
-    <form method="post" action="{% url 'solicitud_enviar' sol.pk %}" enctype="multipart/form-data" class="space-y-3 border border-slate-100 rounded-xl p-4">
+    <form method="post" action="{% url 'solicitud_enviar' sol.pk %}" enctype="multipart/form-data" class="space-y-4 border border-slate-100 rounded-xl p-4">
       {% csrf_token %}
       <p class="text-sm font-medium text-slate-900">Firmar y enviar a Gerencia Área</p>
-      <input type="file" name="firma_empleado" required accept="image/png,image/jpeg,image/webp"
-             class="block text-sm text-slate-600 file:mr-3 file:px-3 file:py-1.5 file:bg-slate-100 file:border-0 file:rounded-md file:text-xs file:font-medium hover:file:bg-slate-200">
+      {% include "partials/firma_pad.html" with campo="firma_empleado" label="Tu firma" requerida=True firma_guardada_url=firma_guardada_url %}
       <button type="submit" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg">
         Enviar a Gerencia Área
       </button>
@@ -203,11 +202,10 @@
     {% endif %}
 
     {% if puede_aprob_area %}
-    <form method="post" action="{% url 'solicitud_aprobar_area' sol.pk %}" enctype="multipart/form-data" class="space-y-3 border border-emerald-200 bg-emerald-50/30 rounded-xl p-4">
+    <form method="post" action="{% url 'solicitud_aprobar_area' sol.pk %}" enctype="multipart/form-data" class="space-y-4 border border-emerald-200 bg-emerald-50/30 rounded-xl p-4">
       {% csrf_token %}
       <p class="text-sm font-medium text-emerald-900">Aprobar como Gerencia de Área</p>
-      <input type="file" name="firma_area" required accept="image/png,image/jpeg,image/webp"
-             class="block text-sm text-slate-600 file:mr-3 file:px-3 file:py-1.5 file:bg-white file:border file:border-slate-200 file:rounded-md file:text-xs file:font-medium">
+      {% include "partials/firma_pad.html" with campo="firma_area" label="Firma de aprobación" requerida=True firma_guardada_url=firma_guardada_url %}
       <button type="submit" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-lg">
         Firmar y aprobar
       </button>
@@ -215,11 +213,10 @@
     {% endif %}
 
     {% if puede_aprob_corp %}
-    <form method="post" action="{% url 'solicitud_aprobar_corp' sol.pk %}" enctype="multipart/form-data" class="space-y-3 border border-emerald-200 bg-emerald-50/30 rounded-xl p-4">
+    <form method="post" action="{% url 'solicitud_aprobar_corp' sol.pk %}" enctype="multipart/form-data" class="space-y-4 border border-emerald-200 bg-emerald-50/30 rounded-xl p-4">
       {% csrf_token %}
       <p class="text-sm font-medium text-emerald-900">Aprobar como Gerencia Corporativa</p>
-      <input type="file" name="firma_corp" required accept="image/png,image/jpeg,image/webp"
-             class="block text-sm text-slate-600 file:mr-3 file:px-3 file:py-1.5 file:bg-white file:border file:border-slate-200 file:rounded-md file:text-xs file:font-medium">
+      {% include "partials/firma_pad.html" with campo="firma_corp" label="Firma de aprobación" requerida=True firma_guardada_url=firma_guardada_url %}
       <button type="submit" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-lg">
         Firmar y aprobar
       </button>

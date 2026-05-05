@@ -72,15 +72,67 @@ ALLOWED_FIRMA_TYPES = {"image/png", "image/jpeg", "image/jpg", "image/webp"}
 MAX_FIRMA_BYTES = 2 * 1024 * 1024  # 2 MB
 
 
-def _validar_archivo_firma(archivo) -> str | None:
-    """Retorna mensaje de error o None si está OK."""
-    if not archivo:
-        return "Debes adjuntar tu firma."
-    if archivo.size > MAX_FIRMA_BYTES:
-        return "La firma supera el tamaño máximo de 2 MB."
-    if archivo.content_type not in ALLOWED_FIRMA_TYPES:
-        return "Formato no permitido. Usa PNG, JPG o WEBP."
-    return None
+def _base64_a_archivo(data_url: str, nombre: str):
+    """Convierte un data-URL base64 (del canvas) a un ContentFile de Django."""
+    import base64
+    from django.core.files.base import ContentFile
+    try:
+        if "," not in data_url:
+            return None
+        _, datos = data_url.split(",", 1)
+        contenido = base64.b64decode(datos)
+        if len(contenido) > MAX_FIRMA_BYTES:
+            return None
+        return ContentFile(contenido, name=nombre)
+    except Exception:
+        return None
+
+
+def _resolver_firma(request, campo: str, perfil=None):
+    """
+    Resuelve la firma de un campo según el tab activo.
+
+    Retorna (archivo_o_None, error_str_o_None).
+    - tab='dibujar'  → convierte base64 del canvas a ContentFile
+    - tab='subir'    → lee el archivo subido
+    - tab='guardada' → copia desde perfil.firma_imagen
+
+    Si no hay nada (campo no enviado), retorna (None, None) — la vista
+    decide si es error o no según si la firma es requerida.
+    """
+    from django.core.files.base import ContentFile
+
+    tab = request.POST.get(f"{campo}_tab", "subir")
+
+    if tab == "dibujar":
+        data_url = request.POST.get(f"{campo}_data", "").strip()
+        if not data_url:
+            return None, None  # el usuario no dibujó nada
+        archivo = _base64_a_archivo(data_url, f"{campo}.png")
+        if archivo is None:
+            return None, "La firma dibujada no pudo procesarse. Intenta de nuevo."
+        return archivo, None
+
+    elif tab == "guardada":
+        if not perfil or not perfil.firma_imagen:
+            return None, "No tienes una firma guardada en tu perfil."
+        try:
+            perfil.firma_imagen.open("rb")
+            contenido = perfil.firma_imagen.read()
+            perfil.firma_imagen.close()
+            return ContentFile(contenido, name=f"{campo}_guardada.png"), None
+        except Exception:
+            return None, "No se pudo leer la firma guardada. Súbela manualmente."
+
+    else:  # tab == 'subir'
+        archivo = request.FILES.get(f"{campo}_archivo")
+        if not archivo:
+            return None, None
+        if archivo.size > MAX_FIRMA_BYTES:
+            return None, "La firma supera el tamaño máximo de 2 MB."
+        if archivo.content_type not in ALLOWED_FIRMA_TYPES:
+            return None, "Formato no permitido. Usa PNG, JPG o WEBP."
+        return archivo, None
 
 
 # ── Lista ────────────────────────────────────────────────────────────────────
@@ -160,6 +212,7 @@ def solicitud_create(request):
         "tipos_cuenta": TipoCuenta.choices,
         "tipos_item": ItemSolicitud.TipoItem.choices,
         "hoy": date.today(),
+        "firma_guardada_url": perfil.firma_imagen.url if perfil.firma_imagen else None,
     }
     return render(request, "solicitudes/create.html", contexto)
 
@@ -243,11 +296,13 @@ def _solicitud_create_post(request, perfil, accion):
         errores.append("Debes agregar al menos un ítem antes de guardar.")
 
     # Si va a enviar a Gerencia Área, exige firma del empleado
-    firma_archivo = request.FILES.get("firma_empleado")
+    firma_archivo = None
     if accion == "enviar":
-        msg = _validar_archivo_firma(firma_archivo)
-        if msg:
-            errores.append(msg)
+        firma_archivo, err_firma = _resolver_firma(request, "firma_empleado", perfil)
+        if err_firma:
+            errores.append(err_firma)
+        elif firma_archivo is None:
+            errores.append("Debes proporcionar tu firma para enviar la solicitud.")
 
     if errores:
         for e in errores:
@@ -259,6 +314,7 @@ def _solicitud_create_post(request, perfil, accion):
             "tipos_item": ItemSolicitud.TipoItem.choices,
             "hoy": date.today(),
             "form_data": P,
+            "firma_guardada_url": perfil.firma_imagen.url if perfil.firma_imagen else None,
         })
 
     # Crear solicitud
@@ -340,6 +396,9 @@ def solicitud_detail(request, pk):
     )
     puede_desembolsar = rol_caja and sol.estado == SolicitudCaja.Estado.APROBADA
 
+    perfil_user, _ = Perfil.objects.get_or_create(user=user)
+    firma_guardada_url = perfil_user.firma_imagen.url if perfil_user.firma_imagen else None
+
     contexto = {
         "sol": sol,
         "items": sol.items.all(),
@@ -350,6 +409,7 @@ def solicitud_detail(request, pk):
         "puede_aprob_corp": puede_aprob_corp,
         "puede_rechazar": puede_rechazar,
         "puede_desembolsar": puede_desembolsar,
+        "firma_guardada_url": firma_guardada_url,
     }
     return render(request, "solicitudes/detail.html", contexto)
 
@@ -371,10 +431,13 @@ def solicitud_enviar(request, pk):
         messages.error(request, "Agrega al menos un ítem antes de enviar.")
         return redirect("solicitud_detail", pk=pk)
 
-    firma = request.FILES.get("firma_empleado")
-    msg = _validar_archivo_firma(firma)
-    if msg:
-        messages.error(request, msg)
+    perfil, _ = Perfil.objects.get_or_create(user=request.user)
+    firma, err = _resolver_firma(request, "firma_empleado", perfil)
+    if err:
+        messages.error(request, err)
+        return redirect("solicitud_detail", pk=pk)
+    if firma is None:
+        messages.error(request, "Debes proporcionar tu firma para enviar la solicitud.")
         return redirect("solicitud_detail", pk=pk)
 
     sol.firma_empleado = firma
@@ -405,10 +468,13 @@ def solicitud_aprobar_area(request, pk):
         messages.error(request, "Esta solicitud no está pendiente de Gerencia Área.")
         return redirect("solicitud_detail", pk=pk)
 
-    firma = request.FILES.get("firma_area")
-    msg = _validar_archivo_firma(firma)
-    if msg:
-        messages.error(request, msg)
+    perfil_apr, _ = Perfil.objects.get_or_create(user=request.user)
+    firma, err = _resolver_firma(request, "firma_area", perfil_apr)
+    if err:
+        messages.error(request, err)
+        return redirect("solicitud_detail", pk=pk)
+    if firma is None:
+        messages.error(request, "Debes proporcionar tu firma para aprobar.")
         return redirect("solicitud_detail", pk=pk)
 
     sol.aprobador_area = request.user
@@ -447,10 +513,13 @@ def solicitud_aprobar_corp(request, pk):
         messages.error(request, "Esta solicitud no está pendiente de Gerencia Corporativa.")
         return redirect("solicitud_detail", pk=pk)
 
-    firma = request.FILES.get("firma_corp")
-    msg = _validar_archivo_firma(firma)
-    if msg:
-        messages.error(request, msg)
+    perfil_apr, _ = Perfil.objects.get_or_create(user=request.user)
+    firma, err = _resolver_firma(request, "firma_corp", perfil_apr)
+    if err:
+        messages.error(request, err)
+        return redirect("solicitud_detail", pk=pk)
+    if firma is None:
+        messages.error(request, "Debes proporcionar tu firma para aprobar.")
         return redirect("solicitud_detail", pk=pk)
 
     sol.aprobador_corp = request.user

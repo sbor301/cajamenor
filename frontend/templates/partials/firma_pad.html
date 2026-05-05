@@ -1,0 +1,235 @@
+{% comment %}
+Componente reutilizable de firma digital.
+
+Uso:
+  {% include "partials/firma_pad.html" with campo="firma_empleado" label="Firma del empleado" requerida=True firma_guardada_url=firma_guardada_url %}
+
+Parámetros:
+  campo            — nombre del campo (firma_empleado, firma_area, firma_corp…)
+  label            — etiqueta visible
+  requerida        — True/False
+  firma_guardada_url — URL de la firma del perfil (si existe, muestra 3er tab)
+
+El componente emite:
+  {campo}_tab      — "dibujar" | "subir" | "guardada"
+  {campo}_data     — base64 PNG (si tab=dibujar y el usuario dibujó algo)
+  {campo}_archivo  — archivo subido (si tab=subir)
+{% endcomment %}
+
+<div x-data="firmaPad('{{ campo }}')"
+     x-init="init()"
+     class="space-y-2">
+
+  <div class="flex items-center justify-between mb-1">
+    <label class="text-xs font-medium text-slate-600">
+      {{ label }}{% if requerida %} <span class="text-red-500">*</span>{% endif %}
+    </label>
+    <span x-show="confirmado"
+          class="inline-flex items-center gap-1 text-xs text-emerald-600 font-medium">
+      <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
+      </svg>
+      Firma lista
+    </span>
+  </div>
+
+  <!-- Tabs -->
+  <div class="flex border-b border-slate-200 gap-0">
+    <button type="button" @click="tab='dibujar'"
+            :class="tab==='dibujar'
+              ? 'border-indigo-600 text-indigo-600 bg-white'
+              : 'border-transparent text-slate-400 hover:text-slate-600'"
+            class="px-4 py-2 text-xs font-medium border-b-2 transition-colors -mb-px">
+      <span class="flex items-center gap-1.5">
+        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
+        </svg>
+        Dibujar
+      </span>
+    </button>
+    <button type="button" @click="tab='subir'"
+            :class="tab==='subir'
+              ? 'border-indigo-600 text-indigo-600 bg-white'
+              : 'border-transparent text-slate-400 hover:text-slate-600'"
+            class="px-4 py-2 text-xs font-medium border-b-2 transition-colors -mb-px">
+      <span class="flex items-center gap-1.5">
+        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
+        </svg>
+        Subir imagen
+      </span>
+    </button>
+    {% if firma_guardada_url %}
+    <button type="button" @click="tab='guardada'"
+            :class="tab==='guardada'
+              ? 'border-indigo-600 text-indigo-600 bg-white'
+              : 'border-transparent text-slate-400 hover:text-slate-600'"
+            class="px-4 py-2 text-xs font-medium border-b-2 transition-colors -mb-px">
+      <span class="flex items-center gap-1.5">
+        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+        </svg>
+        Guardada
+      </span>
+    </button>
+    {% endif %}
+  </div>
+
+  <!-- Panel: Dibujar -->
+  <div x-show="tab==='dibujar'" class="space-y-2">
+    <div class="relative border border-slate-200 rounded-xl overflow-hidden bg-white"
+         style="height: 130px;">
+      <canvas x-ref="canvas"
+              class="w-full h-full cursor-crosshair touch-none block"
+              style="touch-action: none;"></canvas>
+      <!-- Guía visual cuando está vacío -->
+      <div x-show="!tieneFirma"
+           class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+        <svg class="w-6 h-6 text-slate-200 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
+        </svg>
+        <p class="text-xs text-slate-300">Firma aquí con el mouse o el dedo</p>
+      </div>
+    </div>
+    <div class="flex items-center justify-between">
+      <button type="button" @click="limpiar()"
+              class="text-xs text-slate-400 hover:text-red-500 transition-colors flex items-center gap-1">
+        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+        </svg>
+        Limpiar
+      </button>
+      <p class="text-[11px] text-slate-300">Trazo suavizado activo</p>
+    </div>
+    <!-- Datos base64 ocultos -->
+    <input type="hidden" name="{{ campo }}_tab" value="dibujar">
+    <input type="hidden" name="{{ campo }}_data" :value="dataUrl">
+  </div>
+
+  <!-- Panel: Subir imagen -->
+  <div x-show="tab==='subir'" class="space-y-2">
+    <label class="flex flex-col items-center justify-center w-full h-28 border-2 border-dashed border-slate-200 rounded-xl cursor-pointer hover:border-indigo-400 hover:bg-indigo-50/30 transition-colors group">
+      <svg class="w-7 h-7 text-slate-300 group-hover:text-indigo-400 transition-colors mb-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
+      </svg>
+      <span class="text-xs text-slate-400 group-hover:text-indigo-500" x-text="archivoNombre || 'Haz clic o arrastra tu firma aquí'"></span>
+      <span class="text-[11px] text-slate-300 mt-0.5">PNG, JPG, WEBP · Máx 2 MB</span>
+      <input type="file" name="{{ campo }}_archivo" accept="image/png,image/jpeg,image/webp"
+             class="hidden" @change="archivoSeleccionado($event)">
+    </label>
+    <input type="hidden" name="{{ campo }}_tab" value="subir">
+  </div>
+
+  <!-- Panel: Firma guardada del perfil -->
+  {% if firma_guardada_url %}
+  <div x-show="tab==='guardada'" class="space-y-2">
+    <div class="h-28 border border-emerald-200 bg-emerald-50/30 rounded-xl flex items-center justify-center">
+      <img src="{{ firma_guardada_url }}" alt="Firma guardada" class="max-h-24 max-w-full">
+    </div>
+    <p class="text-xs text-slate-400">Se usará la firma guardada en tu perfil.</p>
+    <input type="hidden" name="{{ campo }}_tab" value="guardada">
+  </div>
+  {% endif %}
+
+</div>
+
+<script>
+/* firmaPad — se reutiliza para cualquier campo de firma */
+if (typeof firmaPad === 'undefined') {
+  function firmaPad(campo) {
+    return {
+      campo,
+      tab: 'dibujar',
+      dataUrl: '',
+      tieneFirma: false,
+      confirmado: false,
+      dibujando: false,
+      ultimoX: 0,
+      ultimoY: 0,
+      archivoNombre: '',
+      ctx: null,
+
+      init() {
+        const canvas = this.$refs.canvas;
+        // Ajusta resolución real al tamaño CSS para evitar blur
+        const ajustar = () => {
+          const r = canvas.getBoundingClientRect();
+          if (r.width === 0) return;
+          canvas.width  = r.width  * window.devicePixelRatio;
+          canvas.height = r.height * window.devicePixelRatio;
+          this.ctx = canvas.getContext('2d');
+          this.ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+          this.ctx.strokeStyle = '#0f172a';
+          this.ctx.lineWidth   = 2.5;
+          this.ctx.lineCap     = 'round';
+          this.ctx.lineJoin    = 'round';
+        };
+        requestAnimationFrame(ajustar);
+        window.addEventListener('resize', ajustar);
+
+        // Eventos de mouse
+        canvas.addEventListener('mousedown',  e => this.iniciar(e));
+        canvas.addEventListener('mousemove',  e => this.trazo(e));
+        canvas.addEventListener('mouseup',    () => this.finalizar());
+        canvas.addEventListener('mouseleave', () => this.finalizar());
+
+        // Eventos táctiles
+        canvas.addEventListener('touchstart', e => { e.preventDefault(); this.iniciar(e.touches[0]); }, { passive: false });
+        canvas.addEventListener('touchmove',  e => { e.preventDefault(); this.trazo(e.touches[0]); },  { passive: false });
+        canvas.addEventListener('touchend',   e => { e.preventDefault(); this.finalizar(); },           { passive: false });
+      },
+
+      _pos(e) {
+        const r = this.$refs.canvas.getBoundingClientRect();
+        return {
+          x: e.clientX - r.left,
+          y: e.clientY - r.top,
+        };
+      },
+
+      iniciar(e) {
+        const { x, y } = this._pos(e);
+        this.dibujando = true;
+        this.ultimoX   = x;
+        this.ultimoY   = y;
+        this.ctx.beginPath();
+        this.ctx.moveTo(x, y);
+      },
+
+      trazo(e) {
+        if (!this.dibujando) return;
+        const { x, y } = this._pos(e);
+        // Curva cuadrática para suavizar
+        const mx = (x + this.ultimoX) / 2;
+        const my = (y + this.ultimoY) / 2;
+        this.ctx.quadraticCurveTo(this.ultimoX, this.ultimoY, mx, my);
+        this.ctx.stroke();
+        this.ultimoX = x;
+        this.ultimoY = y;
+      },
+
+      finalizar() {
+        if (!this.dibujando) return;
+        this.dibujando = false;
+        this.tieneFirma = true;
+        this.confirmado = true;
+        this.dataUrl = this.$refs.canvas.toDataURL('image/png');
+      },
+
+      limpiar() {
+        const r = this.$refs.canvas.getBoundingClientRect();
+        this.ctx.clearRect(0, 0, r.width, r.height);
+        this.dataUrl    = '';
+        this.tieneFirma = false;
+        this.confirmado = false;
+      },
+
+      archivoSeleccionado(e) {
+        const f = e.target.files[0];
+        this.archivoNombre = f ? f.name : '';
+        this.confirmado = !!f;
+      },
+    };
+  }
+}
+</script>
