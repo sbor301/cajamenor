@@ -456,7 +456,7 @@ def legalizacion_devolver(request, pk):
 
 @login_required
 def gasto_crear(request, leg_pk):
-    """Empleado (o superusuario) agrega un gasto a una legalización en BORRADOR o DEVUELTO."""
+    """Empleado (o superusuario) agrega uno o varios gastos a una legalización en BORRADOR o DEVUELTO."""
     from legalizaciones.models import CentroCosto, Gasto
     leg = get_object_or_404(Legalizacion, pk=leg_pk)
     user = request.user
@@ -472,30 +472,56 @@ def gasto_crear(request, leg_pk):
     centros = CentroCosto.objects.filter(activo=True)
 
     if request.method == "POST":
-        try:
-            iva_pct = int(request.POST.get("iva_porcentaje") or "19")
-            if iva_pct not in (0, 5, 19):
-                iva_pct = 19
-            gasto = Gasto(
-                legalizacion=leg,
-                fecha=request.POST.get("fecha"),
-                cliente_proveedor=request.POST.get("cliente_proveedor", "").strip(),
-                cedula_nit=request.POST.get("cedula_nit", "").strip(),
-                numero_factura=request.POST.get("numero_factura", "").strip(),
-                centro_costos=request.POST.get("centro_costos", "").strip(),
-                valor_base=Decimal(request.POST.get("valor_base") or "0"),
-                iva_porcentaje=iva_pct,
-                observaciones=request.POST.get("observaciones", "").strip() or None,
-            )
-            if "archivo_factura" in request.FILES:
-                gasto.archivo_factura = request.FILES["archivo_factura"]
-            gasto.full_clean()
-            gasto.save()   # save() calcula iva y valor automáticamente
+        fechas       = request.POST.getlist("fecha[]")
+        proveedores  = request.POST.getlist("cliente_proveedor[]")
+        nits         = request.POST.getlist("cedula_nit[]")
+        facturas     = request.POST.getlist("numero_factura[]")
+        centros_post = request.POST.getlist("centro_costos[]")
+        bases        = request.POST.getlist("valor_base[]")
+        ivas         = request.POST.getlist("iva_porcentaje[]")
+        obs_list     = request.POST.getlist("observaciones[]")
+
+        def _v(lst, i, default=""):
+            return lst[i].strip() if i < len(lst) else default
+
+        guardados, errores = 0, []
+        for i, fecha in enumerate(fechas):
+            base_str = _v(bases, i)
+            if not fecha.strip() or not base_str:
+                continue
+            try:
+                iva_pct = int(_v(ivas, i, "19") or "19")
+                if iva_pct not in (0, 5, 19):
+                    iva_pct = 19
+                gasto = Gasto(
+                    legalizacion=leg,
+                    fecha=fecha.strip(),
+                    cliente_proveedor=_v(proveedores, i),
+                    cedula_nit=_v(nits, i),
+                    numero_factura=_v(facturas, i),
+                    centro_costos=_v(centros_post, i),
+                    valor_base=Decimal(base_str),
+                    iva_porcentaje=iva_pct,
+                    observaciones=_v(obs_list, i) or None,
+                )
+                key = f"archivo_{i}"
+                if key in request.FILES:
+                    gasto.archivo_factura = request.FILES[key]
+                gasto.full_clean()
+                gasto.save()   # save() calcula iva y valor automáticamente
+                guardados += 1
+            except Exception as exc:
+                errores.append(f"Gasto {i + 1}: {exc}")
+
+        for err in errores:
+            messages.error(request, err)
+        if guardados > 0:
             leg.recalcular_saldo(save=True)
-            messages.success(request, "Gasto registrado correctamente.")
+            txt = "Gasto registrado" if guardados == 1 else f"{guardados} gastos registrados"
+            messages.success(request, f"{txt} correctamente.")
             return redirect("legalizacion_detail", pk=leg_pk)
-        except Exception as e:
-            messages.error(request, f"Error al guardar el gasto: {e}")
+        elif not errores:
+            messages.error(request, "No se encontraron datos válidos para guardar.")
 
     return render(request, "legalizaciones/crear_gasto.html", {
         "leg": leg,

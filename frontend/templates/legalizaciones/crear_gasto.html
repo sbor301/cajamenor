@@ -1,12 +1,10 @@
 {% extends "base.html" %}
 {% load formato %}
-{% block title %}Agregar Gasto{% endblock %}
-{% block page_title %}Agregar Gasto{% endblock %}
+{% block title %}Agregar Gastos{% endblock %}
+{% block page_title %}Agregar Gastos{% endblock %}
 
 {% block content %}
-<div class="max-w-3xl space-y-6"
-     x-data="crearGasto()"
-     x-init="init()">
+<div class="max-w-3xl space-y-5" x-data="gestionGastos()">
 
   <!-- Breadcrumb -->
   <nav class="flex items-center gap-1.5 text-xs text-slate-400">
@@ -19,210 +17,369 @@
     <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
     </svg>
-    <span class="text-slate-500 font-medium">Nuevo Gasto</span>
+    <span class="text-slate-500 font-medium">Agregar Gastos</span>
   </nav>
 
-  <!-- Banner OCR -->
-  <div class="bg-indigo-50 border border-indigo-200 rounded-2xl p-4">
-    <div class="flex items-start gap-3">
-      <svg class="w-5 h-5 text-indigo-500 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-              d="M9 3H5a2 2 0 00-2 2v4m6-6h10a2 2 0 012 2v4M9 3v18m0 0h10a2 2 0 002-2V9M9 21H5a2 2 0 01-2-2V9m0 0h18"/>
-      </svg>
-      <div class="flex-1 min-w-0">
-        <p class="text-sm font-semibold text-indigo-900">Análisis automático de factura</p>
-        <p class="text-xs text-indigo-700 mt-0.5">Sube la foto o PDF y los campos se rellenarán automáticamente.</p>
-
-        <label class="mt-3 flex items-center gap-2 cursor-pointer group w-fit">
-          <div class="inline-flex items-center gap-2 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700
-                      text-white text-xs font-semibold rounded-lg transition-colors">
-            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                    d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
-            </svg>
-            <span x-text="analizando ? 'Analizando…' : 'Subir factura'"></span>
-          </div>
-          <span class="text-xs text-indigo-600 truncate"
-                x-text="archivoNombre || 'JPG, PNG o PDF · Máx 10 MB'"></span>
-          <input type="file" accept=".pdf,.jpg,.jpeg,.png,.webp"
-                 class="hidden" x-ref="inputOcr" @change="analizarFactura($event)">
-        </label>
-
-        <div x-show="analizando" class="flex items-center gap-2 mt-2">
-          <svg class="w-4 h-4 text-indigo-500 animate-spin" fill="none" viewBox="0 0 24 24">
-            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
-            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
-          </svg>
-          <span class="text-xs text-indigo-600">Extrayendo datos…</span>
-        </div>
-
-        <template x-if="ocrOk">
-          <div class="mt-2 flex items-center gap-2">
-            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold"
-                  :class="{'bg-emerald-100 text-emerald-700': conf==='alta',
-                           'bg-amber-100 text-amber-700': conf==='media',
-                           'bg-slate-100 text-slate-600': conf==='baja'}">
-              ✓ <span x-text="campos + ' campos detectados · confianza ' + conf"></span>
-            </span>
-            <span class="text-xs text-indigo-600">Revisa y corrige si es necesario.</span>
-          </div>
-        </template>
-        <template x-if="ocrError">
-          <p class="mt-2 text-xs text-red-600" x-text="ocrError"></p>
-        </template>
-      </div>
-    </div>
-  </div>
-
-  <!-- Formulario -->
-  <form method="post" enctype="multipart/form-data" class="space-y-6">
+  <!-- Form -->
+  <form method="post" enctype="multipart/form-data" id="form-gastos" class="space-y-4">
     {% csrf_token %}
 
-    <div class="bg-white rounded-2xl border border-slate-200 p-6 space-y-5">
-      <h2 class="text-base font-semibold text-slate-800">Datos del Gasto</h2>
+    <!-- ─── Gasto cards ──────────────────────────────────────────────────── -->
+    <template x-for="(item, idx) in items" :key="item._key">
+      <div data-gasto-card
+           class="bg-white rounded-2xl border border-slate-200 overflow-hidden transition-shadow"
+           :class="items.length > 1 ? 'shadow-sm' : ''">
 
-      <!-- Fecha + Proveedor -->
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
-        <div>
-          <label class="block text-sm font-medium text-slate-700 mb-1.5">Fecha <span class="text-red-500">*</span></label>
-          <input type="date" name="fecha" required x-ref="fecha"
-                 max="{% now 'Y-m-d' %}"
-                 class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm
-                        focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                 :class="hl.fecha ? 'border-indigo-300 bg-indigo-50/30':''"/>
+        <!-- Card header -->
+        <div class="flex items-center justify-between px-5 py-3 bg-slate-50/70 border-b border-slate-100">
+          <div class="flex items-center gap-2.5">
+            <span class="w-6 h-6 rounded-full bg-indigo-100 text-indigo-700 text-xs font-bold
+                         flex items-center justify-center tabular-nums" x-text="idx + 1"></span>
+            <span class="text-sm font-semibold text-slate-700">Gasto</span>
+            <!-- Applied badge -->
+            <span x-show="item.ocrAplicado && !item.ocrDatos"
+                  class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full
+                         bg-emerald-100 text-emerald-700 text-[10px] font-semibold">
+              <svg class="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/>
+              </svg>
+              OCR aplicado
+            </span>
+          </div>
+          <button type="button" @click="eliminar(idx)"
+                  x-show="items.length > 1"
+                  class="flex items-center gap-1.5 text-xs text-red-400 hover:text-red-600
+                         px-2.5 py-1.5 rounded-lg hover:bg-red-50 transition-colors">
+            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+            </svg>
+            Eliminar
+          </button>
         </div>
-        <div>
-          <label class="block text-sm font-medium text-slate-700 mb-1.5">Proveedor / Cliente <span class="text-red-500">*</span></label>
-          <input type="text" name="cliente_proveedor" required maxlength="255" x-ref="proveedor"
-                 placeholder="Nombre de la empresa o persona"
-                 class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm
-                        focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                 :class="hl.proveedor ? 'border-indigo-300 bg-indigo-50/30':''"/>
-        </div>
-      </div>
 
-      <!-- NIT + Factura -->
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
-        <div>
-          <label class="block text-sm font-medium text-slate-700 mb-1.5">Cédula / NIT <span class="text-red-500">*</span></label>
-          <input type="text" name="cedula_nit" required maxlength="32" x-ref="nit"
-                 placeholder="900123456-7"
-                 class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm font-mono
-                        focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                 :class="hl.nit ? 'border-indigo-300 bg-indigo-50/30':''"/>
-        </div>
-        <div>
-          <label class="block text-sm font-medium text-slate-700 mb-1.5">Número de Factura <span class="text-red-500">*</span></label>
-          <input type="text" name="numero_factura" required maxlength="64" x-ref="factura"
-                 placeholder="FE-001"
-                 class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm
-                        focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                 :class="hl.factura ? 'border-indigo-300 bg-indigo-50/30':''"/>
-        </div>
-      </div>
+        <div class="p-5 space-y-5">
 
-      <!-- Centro de costos -->
-      <div>
-        <label class="block text-sm font-medium text-slate-700 mb-1.5">Centro de Costos <span class="text-red-500">*</span></label>
-        {% if centros %}
-        <select name="centro_costos" required
-                class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm bg-white
-                       focus:outline-none focus:ring-2 focus:ring-indigo-500">
-          <option value="">Seleccionar…</option>
-          {% for c in centros %}
-          <option value="{{ c.codigo }} — {{ c.nombre }}">{{ c.codigo }} — {{ c.nombre }}</option>
-          {% endfor %}
-        </select>
-        {% else %}
-        <input type="text" name="centro_costos" required maxlength="64" placeholder="Ej: Administración"
-               class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm
-                      focus:outline-none focus:ring-2 focus:ring-indigo-500"/>
-        {% endif %}
-      </div>
-
-      <!-- ─── Valores ──────────────────────────────────────────────────── -->
-      <div class="rounded-xl border border-slate-100 bg-slate-50/50 p-4 space-y-4">
-        <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Valores</p>
-
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-
-          <!-- Valor base -->
+          <!-- ── Soporte / Factura ──────────────────────────────────────── -->
           <div>
-            <label class="block text-xs font-medium text-slate-600 mb-1.5">
-              Valor base <span class="text-red-500">*</span>
-            </label>
-            <div class="relative">
-              <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">$</span>
-              <input type="text" inputmode="numeric" required x-ref="baseDisplay"
-                     placeholder="0"
-                     @input="fmtBase($event)"
-                     class="w-full pl-6 pr-3 py-2 rounded-lg border border-slate-300 text-sm
-                            focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                     :class="hl.base ? 'border-indigo-300 bg-indigo-50/30':''"/>
-              <input type="hidden" name="valor_base" x-ref="baseHidden"/>
+            <!-- Real file input (hidden — carries the file for submission) -->
+            <input type="file"
+                   :id="'fi_' + item._key"
+                   :name="'archivo_' + idx"
+                   accept=".pdf,.jpg,.jpeg,.png,.webp"
+                   class="hidden"
+                   @change="archivoSeleccionado($event, item)">
+
+            <p class="text-sm font-medium text-slate-700 mb-1.5">Soporte / Factura</p>
+
+            <!-- Empty state: drop zone -->
+            <div x-show="!item.archivoNombre">
+              <label :for="'fi_' + item._key"
+                     class="flex items-center gap-3 px-4 py-3 border-2 border-dashed border-slate-300
+                            rounded-xl cursor-pointer group
+                            hover:border-indigo-400 hover:bg-indigo-50/20 transition-all">
+                <div class="w-9 h-9 rounded-lg bg-slate-100 group-hover:bg-indigo-100
+                            flex items-center justify-center transition-colors shrink-0">
+                  <svg class="w-4 h-4 text-slate-400 group-hover:text-indigo-500 transition-colors"
+                       fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
+                  </svg>
+                </div>
+                <div>
+                  <p class="text-sm font-medium text-slate-600 group-hover:text-indigo-700 transition-colors">
+                    Seleccionar archivo
+                  </p>
+                  <p class="text-xs text-slate-400">JPG, PNG o PDF · Máx. 10 MB</p>
+                </div>
+              </label>
+            </div>
+
+            <!-- File selected state -->
+            <div x-show="item.archivoNombre" class="space-y-2">
+              <div class="flex items-center gap-2 flex-wrap">
+                <!-- File chip -->
+                <div class="flex items-center gap-2 px-3 py-2 bg-slate-50 border border-slate-200
+                            rounded-lg min-w-0 flex-1">
+                  <svg class="w-4 h-4 text-indigo-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/>
+                  </svg>
+                  <span class="text-sm text-slate-700 truncate" x-text="item.archivoNombre"></span>
+                </div>
+                <!-- Clear -->
+                <button type="button" @click="limpiarArchivo(item)"
+                        title="Quitar archivo"
+                        class="p-2 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors">
+                  <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                  </svg>
+                </button>
+                <!-- OCR button -->
+                <button type="button" @click="analizarOCR(item)"
+                        :disabled="item.analizando"
+                        class="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-semibold
+                               transition-colors shrink-0 disabled:opacity-60 disabled:cursor-not-allowed
+                               bg-indigo-600 hover:bg-indigo-700 text-white">
+                  <template x-if="item.analizando">
+                    <svg class="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
+                      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                    </svg>
+                  </template>
+                  <template x-if="!item.analizando">
+                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
+                    </svg>
+                  </template>
+                  <span x-text="item.analizando ? 'Analizando…' : 'Analizar con OCR'"></span>
+                </button>
+              </div>
+
+              <!-- OCR error -->
+              <p x-show="item.ocrError"
+                 class="flex items-center gap-1.5 text-xs text-red-600">
+                <svg class="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                </svg>
+                <span x-text="item.ocrError"></span>
+              </p>
+
+              <!-- ── OCR results panel ── -->
+              <div x-show="item.ocrDatos"
+                   x-transition:enter="transition ease-out duration-200"
+                   x-transition:enter-start="opacity-0 -translate-y-1"
+                   x-transition:enter-end="opacity-100 translate-y-0"
+                   class="border border-indigo-200 rounded-xl overflow-hidden">
+
+                <!-- Panel header -->
+                <div class="flex items-center justify-between px-4 py-2.5 bg-indigo-50 border-b border-indigo-100">
+                  <div class="flex items-center gap-2">
+                    <svg class="w-4 h-4 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
+                    </svg>
+                    <span class="text-sm font-semibold text-indigo-900">Datos detectados</span>
+                    <!-- Confidence badge -->
+                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold"
+                          :class="{
+                            'bg-emerald-100 text-emerald-700': item.ocrConf === 'alta',
+                            'bg-amber-100 text-amber-700':    item.ocrConf === 'media',
+                            'bg-slate-100 text-slate-500':    item.ocrConf === 'baja'
+                          }">
+                      <span x-text="item.ocrConf === 'alta' ? '● Alta' : item.ocrConf === 'media' ? '● Media' : '● Baja'"></span>
+                      <span class="ml-1 opacity-70">confianza</span>
+                    </span>
+                  </div>
+                  <div class="flex items-center gap-3 text-xs font-medium">
+                    <button type="button" @click="seleccionarTodos(item, true)"
+                            class="text-indigo-600 hover:text-indigo-800 transition-colors">Todos</button>
+                    <span class="text-slate-300">|</span>
+                    <button type="button" @click="seleccionarTodos(item, false)"
+                            class="text-slate-500 hover:text-slate-700 transition-colors">Ninguno</button>
+                  </div>
+                </div>
+
+                <!-- Campo rows -->
+                <div class="divide-y divide-slate-50 bg-white">
+                  <template x-for="campo in camposOCR(item.ocrDatos)" :key="campo.key">
+                    <label class="flex items-center gap-3 px-4 py-2.5 hover:bg-slate-50 cursor-pointer transition-colors">
+                      <input type="checkbox"
+                             :checked="item.camposAplicar[campo.key]"
+                             @change="item.camposAplicar[campo.key] = $event.target.checked"
+                             class="w-4 h-4 rounded accent-indigo-600 shrink-0">
+                      <span class="text-xs font-medium text-slate-400 w-28 shrink-0"
+                            x-text="campo.label"></span>
+                      <span class="text-sm font-semibold text-slate-800 truncate flex-1"
+                            x-text="ocrVal(item.ocrDatos, campo.key)"></span>
+                    </label>
+                  </template>
+                </div>
+
+                <!-- Panel footer actions -->
+                <div class="flex items-center justify-end gap-2 px-4 py-3
+                            bg-slate-50 border-t border-slate-100">
+                  <button type="button"
+                          @click="item.ocrDatos = null; item.ocrError = ''"
+                          class="px-3 py-1.5 text-xs font-medium text-slate-500 hover:text-slate-700
+                                 rounded-lg hover:bg-slate-200 transition-colors">
+                    Cerrar
+                  </button>
+                  <button type="button" @click="aplicarOCR(item)"
+                          class="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-lg
+                                 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold
+                                 transition-colors">
+                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
+                    </svg>
+                    Aplicar seleccionados
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
 
-          <!-- % IVA -->
+          <!-- ── Campos del formulario ────────────────────────────────── -->
+
+          <!-- Fecha + Proveedor -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-slate-700 mb-1.5">
+                Fecha <span class="text-red-500">*</span>
+              </label>
+              <input type="date" :name="'fecha[]'" required
+                     :value="item.fecha" @change="item.fecha = $event.target.value"
+                     max="{% now 'Y-m-d' %}"
+                     class="w-full px-3.5 py-2.5 rounded-xl border text-sm
+                            focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors"
+                     :class="item.hl.fecha ? 'border-indigo-300 bg-indigo-50/40' : 'border-slate-300'"/>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-slate-700 mb-1.5">
+                Proveedor / Cliente <span class="text-red-500">*</span>
+              </label>
+              <input type="text" :name="'cliente_proveedor[]'" required maxlength="255"
+                     x-model="item.proveedor" placeholder="Nombre empresa o persona"
+                     class="w-full px-3.5 py-2.5 rounded-xl border text-sm
+                            focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors"
+                     :class="item.hl.proveedor ? 'border-indigo-300 bg-indigo-50/40' : 'border-slate-300'"/>
+            </div>
+          </div>
+
+          <!-- NIT + Factura -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-slate-700 mb-1.5">
+                Cédula / NIT <span class="text-red-500">*</span>
+              </label>
+              <input type="text" :name="'cedula_nit[]'" required maxlength="32"
+                     x-model="item.nit" placeholder="900.123.456-7"
+                     class="w-full px-3.5 py-2.5 rounded-xl border text-sm font-mono
+                            focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors"
+                     :class="item.hl.nit ? 'border-indigo-300 bg-indigo-50/40' : 'border-slate-300'"/>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-slate-700 mb-1.5">
+                N° Factura <span class="text-red-500">*</span>
+              </label>
+              <input type="text" :name="'numero_factura[]'" required maxlength="64"
+                     x-model="item.factura" placeholder="FE-0001"
+                     class="w-full px-3.5 py-2.5 rounded-xl border text-sm
+                            focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors"
+                     :class="item.hl.factura ? 'border-indigo-300 bg-indigo-50/40' : 'border-slate-300'"/>
+            </div>
+          </div>
+
+          <!-- Centro de costos -->
           <div>
-            <label class="block text-xs font-medium text-slate-600 mb-1.5">% IVA</label>
-            <select name="iva_porcentaje" x-ref="ivaPct"
-                    @change="calcular()"
-                    class="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm bg-white
-                           focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                    :class="hl.ivaPct ? 'border-indigo-300 bg-indigo-50/30':''">
-              {% for pct, label in iva_opciones %}
-              <option value="{{ pct }}" {% if pct == 19 %}selected{% endif %}>{{ label }}</option>
+            <label class="block text-sm font-medium text-slate-700 mb-1.5">
+              Centro de Costos <span class="text-red-500">*</span>
+            </label>
+            {% if centros %}
+            <select :name="'centro_costos[]'" required x-model="item.centro"
+                    class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm bg-white
+                           focus:outline-none focus:ring-2 focus:ring-indigo-500">
+              <option value="">Seleccionar…</option>
+              {% for c in centros %}
+              <option value="{{ c.codigo }} — {{ c.nombre }}">{{ c.codigo }} — {{ c.nombre }}</option>
               {% endfor %}
             </select>
+            {% else %}
+            <input type="text" :name="'centro_costos[]'" required maxlength="64"
+                   x-model="item.centro" placeholder="Ej: Administración"
+                   class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm
+                          focus:outline-none focus:ring-2 focus:ring-indigo-500"/>
+            {% endif %}
           </div>
 
-          <!-- IVA $ (calculado) -->
-          <div>
-            <label class="block text-xs font-medium text-slate-600 mb-1.5">IVA ($)</label>
-            <div class="relative">
-              <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">$</span>
-              <input type="text" readonly tabindex="-1"
-                     :value="ivaDisplay"
-                     class="w-full pl-6 pr-3 py-2 rounded-lg border border-slate-200 bg-slate-100
-                            text-sm text-slate-600 cursor-not-allowed"/>
+          <!-- ── Valores ─────────────────────────────────────────────── -->
+          <div class="rounded-xl border border-slate-100 bg-slate-50/50 p-4 space-y-4">
+            <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Valores</p>
+
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <!-- Valor base -->
+              <div>
+                <label class="block text-xs font-medium text-slate-600 mb-1.5">
+                  Valor base <span class="text-red-500">*</span>
+                </label>
+                <div class="relative">
+                  <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">$</span>
+                  <input type="text" inputmode="numeric" required
+                         :value="item.baseDisplay"
+                         @input="fmtBase($event, item)"
+                         placeholder="0"
+                         class="w-full pl-6 pr-3 py-2 rounded-lg border text-sm
+                                focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors"
+                         :class="item.hl.base ? 'border-indigo-300 bg-indigo-50/40' : 'border-slate-300'"/>
+                  <input type="hidden" :name="'valor_base[]'" :value="item.baseRaw"/>
+                </div>
+              </div>
+
+              <!-- % IVA -->
+              <div>
+                <label class="block text-xs font-medium text-slate-600 mb-1.5">% IVA</label>
+                <select :name="'iva_porcentaje[]'"
+                        x-model.number="item.ivaPct"
+                        @change="calcular(item)"
+                        class="w-full px-3 py-2 rounded-lg border text-sm bg-white
+                               focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors"
+                        :class="item.hl.ivaPct ? 'border-indigo-300 bg-indigo-50/40' : 'border-slate-300'">
+                  {% for pct, label in iva_opciones %}
+                  <option value="{{ pct }}">{{ label }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+
+              <!-- IVA calculado -->
+              <div>
+                <label class="block text-xs font-medium text-slate-600 mb-1.5">IVA ($)</label>
+                <div class="relative">
+                  <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">$</span>
+                  <input type="text" readonly tabindex="-1"
+                         :value="fmt(item.ivaCalc)"
+                         class="w-full pl-6 pr-3 py-2 rounded-lg border border-slate-200 bg-slate-100
+                                text-sm text-slate-600 cursor-not-allowed"/>
+                </div>
+              </div>
+            </div>
+
+            <!-- Total -->
+            <div class="flex items-center justify-between pt-3 border-t border-slate-200">
+              <span class="text-sm font-semibold text-slate-700">Total a pagar</span>
+              <span class="text-xl font-bold text-slate-900 tabular-nums"
+                    x-text="'$' + fmt(item.totalCalc)"></span>
             </div>
           </div>
-        </div>
 
-        <!-- Total -->
-        <div class="flex items-center justify-between pt-3 border-t border-slate-200">
-          <span class="text-sm font-semibold text-slate-700">Total a pagar</span>
-          <span class="text-xl font-bold text-slate-900 tabular-nums"
-                x-text="'$' + totalDisplay"></span>
-        </div>
-      </div>
+          <!-- Observaciones -->
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1.5">Observaciones</label>
+            <textarea :name="'observaciones[]'" rows="2" x-model="item.obs"
+                      placeholder="Notas adicionales (opcional)…"
+                      class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm
+                             focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"></textarea>
+          </div>
 
-      <!-- Observaciones -->
-      <div>
-        <label class="block text-sm font-medium text-slate-700 mb-1.5">Observaciones</label>
-        <textarea name="observaciones" rows="2" placeholder="Notas adicionales (opcional)…"
-                  class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm
-                         focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"></textarea>
-      </div>
+        </div><!-- /p-5 -->
+      </div><!-- /card -->
+    </template>
 
-      <!-- Soporte -->
-      <div>
-        <label class="block text-sm font-medium text-slate-700 mb-1.5">
-          Soporte / Factura
-          <span class="text-xs font-normal text-slate-400 ml-1">(el archivo del análisis OCR se adjunta automáticamente)</span>
-        </label>
-        <input type="file" name="archivo_factura" accept=".pdf,.jpg,.jpeg,.png" x-ref="inputSoporte"
-               class="block w-full text-sm text-slate-600
-                      file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0
-                      file:text-sm file:font-medium file:bg-indigo-50 file:text-indigo-700
-                      hover:file:bg-indigo-100 cursor-pointer"/>
-        <p class="text-xs text-slate-400 mt-1">JPG, PNG o PDF · Máx. 10 MB</p>
-      </div>
-    </div>
+    <!-- ── Agregar otro gasto ──────────────────────────────────────────── -->
+    <button type="button" @click="agregar()"
+            class="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl border-2 border-dashed
+                   border-slate-300 text-sm font-medium text-slate-500
+                   hover:border-indigo-400 hover:text-indigo-600 hover:bg-indigo-50/20
+                   transition-all">
+      <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+      </svg>
+      Agregar otro gasto
+    </button>
 
-    <!-- Acciones -->
-    <div class="flex items-center justify-between">
+    <!-- ── Acciones ───────────────────────────────────────────────────── -->
+    <div class="flex items-center justify-between pt-2">
       <a href="{% url 'legalizacion_detail' leg.pk %}"
          class="inline-flex items-center gap-2 text-sm text-slate-500 hover:text-slate-700 transition-colors">
         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -232,110 +389,193 @@
       </a>
       <button type="submit"
               class="inline-flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700
-                     text-white text-sm font-semibold rounded-xl transition-colors">
+                     text-white text-sm font-semibold rounded-xl transition-colors shadow-sm">
         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
         </svg>
-        Guardar gasto
+        <span x-text="items.length === 1 ? 'Guardar gasto' : 'Guardar ' + items.length + ' gastos'"></span>
       </button>
     </div>
   </form>
 </div>
 
 <script>
-function crearGasto() {
+function gestionGastos() {
+  let _seq = 0;
+
+  /* Prototipo de un ítem de gasto vacío */
+  const nuevoItem = () => ({
+    _key: ++_seq,
+    // Archivo
+    archivoNombre: '', archivoObj: null,
+    // OCR
+    analizando: false,
+    ocrDatos: null, ocrConf: '', ocrError: '', ocrAplicado: false,
+    camposAplicar: {},
+    // Campos del formulario
+    fecha: '', proveedor: '', nit: '', factura: '', centro: '',
+    baseRaw: 0, baseDisplay: '',
+    ivaPct: 19, ivaCalc: 0, totalCalc: 0,
+    obs: '',
+    // Resaltados por OCR
+    hl: {},
+  });
+
   return {
-    /* OCR */
-    analizando: false, ocrOk: false, ocrError: '', conf: '', campos: 0, archivoNombre: '',
-    /* valores */
-    baseRaw: 0, ivaCalc: 0, totalCalc: 0,
-    /* highlights */
-    hl: { fecha:false, proveedor:false, nit:false, factura:false, base:false, ivaPct:false },
+    items: [nuevoItem()],
 
-    init() {},
-
-    get ivaDisplay()   { return this.ivaCalc.toLocaleString('es-CO'); },
-    get totalDisplay() { return this.totalCalc.toLocaleString('es-CO'); },
-
-    fmtBase(e) {
-      const raw = e.target.value.replace(/\D/g, '') || '0';
-      this.baseRaw = parseInt(raw, 10);
-      e.target.value = this.baseRaw.toLocaleString('es-CO');
-      this.$refs.baseHidden.value = raw;
-      this.calcular();
+    /* ── Lista de gastos ──────────────────────────────────────────────── */
+    agregar() {
+      this.items.push(nuevoItem());
+      this.$nextTick(() => {
+        const cards = this.$el.querySelectorAll('[data-gasto-card]');
+        if (cards.length) {
+          cards[cards.length - 1].scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      });
     },
 
-    calcular() {
-      const pct = parseInt(this.$refs.ivaPct.value) || 0;
-      this.ivaCalc   = Math.round(this.baseRaw * pct / 100);
-      this.totalCalc = this.baseRaw + this.ivaCalc;
+    eliminar(idx) {
+      if (this.items.length > 1) this.items.splice(idx, 1);
     },
 
-    setBase(valor) {
-      const raw = Math.round(valor);
-      this.baseRaw = raw;
-      this.$refs.baseHidden.value = String(raw);
-      this.$refs.baseDisplay.value = raw.toLocaleString('es-CO');
-      this.calcular();
+    /* ── Cálculos ─────────────────────────────────────────────────────── */
+    calcular(item) {
+      item.ivaCalc   = Math.round(item.baseRaw * item.ivaPct / 100);
+      item.totalCalc = item.baseRaw + item.ivaCalc;
     },
 
-    async analizarFactura(e) {
-      const archivo = e.target.files[0];
-      if (!archivo) return;
-      this.archivoNombre = archivo.name;
-      this.analizando = true;
-      this.ocrOk = false;
-      this.ocrError = '';
-      Object.keys(this.hl).forEach(k => this.hl[k] = false);
+    fmtBase(e, item) {
+      const raw = e.target.value.replace(/\D/g, '');
+      if (!raw) {
+        item.baseRaw = 0; item.baseDisplay = '';
+        e.target.value = '';
+      } else {
+        item.baseRaw     = parseInt(raw, 10);
+        item.baseDisplay = item.baseRaw.toLocaleString('es-CO');
+        e.target.value   = item.baseDisplay;
+      }
+      this.calcular(item);
+    },
 
-      /* copiar al input de soporte */
-      const dt = new DataTransfer();
-      dt.items.add(archivo);
-      this.$refs.inputSoporte.files = dt.files;
+    setBase(item, valor) {
+      item.baseRaw     = Math.round(valor);
+      item.baseDisplay = item.baseRaw > 0 ? item.baseRaw.toLocaleString('es-CO') : '';
+      this.calcular(item);
+    },
+
+    fmt(n) { return Math.round(n || 0).toLocaleString('es-CO'); },
+
+    /* ── Archivo ──────────────────────────────────────────────────────── */
+    archivoSeleccionado(e, item) {
+      const f = e.target.files[0];
+      if (!f) return;
+      item.archivoObj = f;
+      item.archivoNombre = f.name;
+      item.ocrDatos = null;
+      item.ocrError = '';
+      item.ocrAplicado = false;
+    },
+
+    limpiarArchivo(item) {
+      const el = document.getElementById('fi_' + item._key);
+      if (el) el.value = '';
+      Object.assign(item, {
+        archivoObj: null, archivoNombre: '',
+        ocrDatos: null, ocrError: '', ocrAplicado: false,
+      });
+    },
+
+    /* ── OCR ──────────────────────────────────────────────────────────── */
+    async analizarOCR(item) {
+      if (!item.archivoObj) return;
+      item.analizando = true;
+      item.ocrError   = '';
+      item.ocrDatos   = null;
 
       const fd = new FormData();
-      fd.append('archivo', archivo);
+      fd.append('archivo', item.archivoObj);
       try {
         const r = await fetch('{% url "ocr_factura" %}', {
           method: 'POST',
-          headers: { 'X-CSRFToken': document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '' },
+          headers: {
+            'X-CSRFToken': document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '',
+          },
           body: fd,
         });
         const d = await r.json();
-        if (!d.ok) { this.ocrError = d.mensaje || 'No se pudo analizar el archivo.'; return; }
+        if (!d.ok) { item.ocrError = d.mensaje || 'No se pudo analizar el archivo.'; return; }
 
-        const c = d.campos || {};
-        if (c.fecha)               { this.$refs.fecha.value    = c.fecha;               this.hl.fecha    = true; }
-        if (c.cliente_proveedor)   { this.$refs.proveedor.value = c.cliente_proveedor;  this.hl.proveedor = true; }
-        if (c.cedula_nit)          { this.$refs.nit.value      = c.cedula_nit;          this.hl.nit      = true; }
-        if (c.numero_factura)      { this.$refs.factura.value  = c.numero_factura;      this.hl.factura  = true; }
+        item.ocrDatos = d.campos || {};
+        item.ocrConf  = d.confianza || 'baja';
 
-        /* porcentaje IVA detectado */
-        if (c.iva_porcentaje !== undefined) {
-          this.$refs.ivaPct.value = c.iva_porcentaje;
-          this.hl.ivaPct = true;
-        }
-
-        /* valor base: preferir el campo explícito; si no, inferir desde total e IVA */
-        if (c.valor_base && c.valor_base > 0) {
-          this.setBase(c.valor_base);
-          this.hl.base = true;
-        } else if (c.valor_total && c.valor_total > 0) {
-          const pct = parseInt(this.$refs.ivaPct.value) || 19;
-          const base = Math.round(c.valor_total / (1 + pct / 100));
-          this.setBase(base);
-          this.hl.base = true;
-        }
-
-        this.calcular();
-        this.ocrOk = true;
-        this.conf   = d.confianza || 'baja';
-        this.campos = d.campos_detectados || 0;
+        /* Pre-seleccionar todos los campos detectados */
+        const claves = [
+          'fecha', 'cliente_proveedor', 'cedula_nit', 'numero_factura',
+          'iva_porcentaje', 'valor_base', 'valor_total',
+        ];
+        item.camposAplicar = {};
+        claves.forEach(k => {
+          const v = item.ocrDatos[k];
+          if (v !== undefined && v !== null && v !== '') item.camposAplicar[k] = true;
+        });
       } catch {
-        this.ocrError = 'Error de conexión al analizar el archivo.';
+        item.ocrError = 'Error de conexión. Intenta de nuevo.';
       } finally {
-        this.analizando = false;
+        item.analizando = false;
       }
+    },
+
+    seleccionarTodos(item, val) {
+      Object.keys(item.camposAplicar).forEach(k => item.camposAplicar[k] = val);
+    },
+
+    aplicarOCR(item) {
+      const c = item.ocrDatos;
+      const s = item.camposAplicar;
+      if (!c) return;
+
+      if (s.fecha && c.fecha)                          { item.fecha     = c.fecha;             item.hl.fecha     = true; }
+      if (s.cliente_proveedor && c.cliente_proveedor)  { item.proveedor = c.cliente_proveedor; item.hl.proveedor = true; }
+      if (s.cedula_nit && c.cedula_nit)                { item.nit       = c.cedula_nit;        item.hl.nit       = true; }
+      if (s.numero_factura && c.numero_factura)        { item.factura   = c.numero_factura;    item.hl.factura   = true; }
+      if (s.iva_porcentaje && c.iva_porcentaje != null){ item.ivaPct    = c.iva_porcentaje;    item.hl.ivaPct    = true; }
+
+      if (s.valor_base && c.valor_base > 0) {
+        this.setBase(item, c.valor_base);
+        item.hl.base = true;
+      } else if (s.valor_total && c.valor_total > 0) {
+        this.setBase(item, c.valor_total / (1 + (item.ivaPct || 19) / 100));
+        item.hl.base = true;
+      }
+
+      this.calcular(item);
+      item.ocrAplicado = true;
+      item.ocrDatos = null;
+    },
+
+    /* ── Helpers de visualización OCR ────────────────────────────────── */
+    camposOCR(c) {
+      if (!c) return [];
+      return [
+        { key: 'fecha',             label: 'Fecha' },
+        { key: 'cliente_proveedor', label: 'Proveedor' },
+        { key: 'cedula_nit',        label: 'NIT / Cédula' },
+        { key: 'numero_factura',    label: 'N° Factura' },
+        { key: 'iva_porcentaje',    label: '% IVA' },
+        { key: 'valor_base',        label: 'Valor base' },
+        { key: 'valor_total',       label: 'Total factura' },
+      ].filter(f => {
+        const v = c[f.key];
+        return v !== undefined && v !== null && v !== '';
+      });
+    },
+
+    ocrVal(c, k) {
+      const v = c[k];
+      if (k === 'valor_base' || k === 'valor_total') return '$' + Math.round(v).toLocaleString('es-CO');
+      if (k === 'iva_porcentaje') return v + '%';
+      return String(v);
     },
   };
 }
