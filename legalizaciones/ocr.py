@@ -296,14 +296,23 @@ def parsear_factura(texto: str) -> dict:
 
     # ── 6. IVA ───────────────────────────────────────────────────────────────
     # Patrón DIAN: "IVA (19.00%) $805.939,41"
+    # Capturamos TAMBIÉN el porcentaje del paréntesis
     iva_m = re.search(
-        r'IVA\s*\([^)]*\)\s*\$?\s*([\d.,]+)',
+        r'IVA\s*\(\s*([\d]+(?:[.,]\d+)?)\s*%\s*\)\s*\$?\s*([\d.,]+)',
         t, re.IGNORECASE
     )
     if iva_m:
-        v = _limpiar_numero(iva_m.group(1))
+        pct = round(float(iva_m.group(1).replace(",", ".")))
+        if pct in (0, 5, 19):
+            resultado["iva_porcentaje"] = pct
+        v = _limpiar_numero(iva_m.group(2))
         if v and v > 0:
             resultado["iva"] = v
+    else:
+        # Fallback sin monto: solo porcentaje — "IVA 19%" / "IVA: 5%"
+        pct_m = re.search(r'\bIVA\s*:?\s*(19|5|0)\s*%', t, re.IGNORECASE)
+        if pct_m:
+            resultado["iva_porcentaje"] = int(pct_m.group(1))
 
     # Fallback: "Total IVA $xxx" (facturas de operadores)
     if "iva" not in resultado:

@@ -32,6 +32,14 @@ class TipoCuenta(models.TextChoices):
     CORRIENTE = "CORRIENTE", "Corriente"
 
 
+# Tarifas de IVA vigentes en Colombia
+IVA_OPCIONES = [
+    (0,  "0 % — Excluido / Exento"),
+    (5,  "5 %"),
+    (19, "19 % — Tarifa general"),
+]
+
+
 class Perfil(models.Model):
     """
     Información personal y bancaria del empleado.
@@ -102,13 +110,10 @@ class SolicitudCaja(models.Model):
         RECHAZADA    = "RECHAZADA",    "Rechazada"
 
     numero = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    codigo = models.CharField(
-        max_length=20, unique=True, editable=False, blank=True,
-        help_text="SOL-YYYY-NNNN",
-    )
     numero_caja = models.CharField(
         max_length=20, unique=True, editable=False, blank=True,
-        help_text="CAJA-YYYY-NNNN — asignado al crear la solicitud",
+        verbose_name="N° de caja",
+        help_text="CAJA-YYYY-NNNN — asignado automáticamente al crear la solicitud",
     )
 
     solicitante = models.ForeignKey(
@@ -180,37 +185,28 @@ class SolicitudCaja(models.Model):
         ]
 
     def __str__(self):
-        return f"{self.codigo or self.numero} ({self.get_estado_display()})"
+        return f"{self.numero_caja or self.numero} ({self.get_estado_display()})"
 
-    # ── Códigos correlativos ──────────────────────────────────────────────
+    # ── Número de caja correlativo ────────────────────────────────────────
 
     @classmethod
-    def _siguiente(cls, prefijo: str, campo: str, ancho: int = 4) -> str:
-        """Genera el siguiente correlativo para un prefijo dado."""
+    def _generar_numero_caja(cls) -> str:
+        from django.utils import timezone
+        anio = timezone.now().year
+        prefijo = f"CAJA-{anio}-"
         ultimo = (
-            cls.objects.filter(**{f"{campo}__startswith": prefijo})
-            .order_by(campo)
-            .values_list(campo, flat=True)
+            cls.objects.filter(numero_caja__startswith=prefijo)
+            .order_by("numero_caja")
+            .values_list("numero_caja", flat=True)
             .last()
         )
+        n = 1
         if ultimo:
             try:
                 n = int(ultimo.split("-")[-1]) + 1
             except (ValueError, IndexError):
                 n = 1
-        else:
-            n = 1
-        return f"{prefijo}{n:0{ancho}d}"
-
-    @classmethod
-    def _generar_codigo(cls) -> str:
-        from django.utils import timezone
-        return cls._siguiente(f"SOL-{timezone.now().year}-", "codigo")
-
-    @classmethod
-    def _generar_numero_caja(cls) -> str:
-        from django.utils import timezone
-        return cls._siguiente(f"CAJA-{timezone.now().year}-", "numero_caja")
+        return f"{prefijo}{n:04d}"
 
     # ── Helpers de totales ────────────────────────────────────────────────
 
@@ -220,8 +216,6 @@ class SolicitudCaja(models.Model):
     # ── Save ──────────────────────────────────────────────────────────────
 
     def save(self, *args, **kwargs):
-        if not self.codigo:
-            self.codigo = self._generar_codigo()
         if not self.numero_caja:
             self.numero_caja = self._generar_numero_caja()
         super().save(*args, **kwargs)
@@ -474,12 +468,19 @@ class Gasto(models.Model):
         verbose_name="Valor base",
         validators=[MinValueValidator(Decimal("0.01"), message="El valor base debe ser mayor a cero.")],
     )
+    iva_porcentaje = models.SmallIntegerField(
+        choices=IVA_OPCIONES,
+        default=19,
+        verbose_name="% IVA",
+        help_text="Tarifa de IVA aplicada. El monto se calcula automáticamente.",
+    )
     iva = models.DecimalField(
         max_digits=14,
         decimal_places=2,
         default=Decimal("0.00"),
-        verbose_name="IVA",
-        validators=[MinValueValidator(Decimal("0"), message="El IVA no puede ser negativo.")],
+        editable=False,
+        verbose_name="IVA ($)",
+        help_text="Calculado: valor_base × iva_porcentaje / 100",
     )
     valor = models.DecimalField(
         max_digits=14,
@@ -526,15 +527,16 @@ class Gasto(models.Model):
         errors = {}
         if self.valor_base is not None and self.valor_base <= 0:
             errors["valor_base"] = "El valor base debe ser mayor a cero."
-        if self.iva is not None and self.iva < 0:
-            errors["iva"] = "El IVA no puede ser negativo."
         if self.fecha and self.fecha > date.today():
             errors["fecha"] = "La fecha del gasto no puede ser en el futuro."
         if errors:
             raise ValidationError(errors)
 
     def save(self, *args, **kwargs):
-        self.valor = (self.valor_base or Decimal("0.00")) + (self.iva or Decimal("0.00"))
+        base = self.valor_base or Decimal("0.00")
+        pct  = Decimal(self.iva_porcentaje or 0)
+        self.iva   = (base * pct / Decimal("100")).quantize(Decimal("0.01"))
+        self.valor = base + self.iva
         super().save(*args, **kwargs)
 
     def __str__(self):

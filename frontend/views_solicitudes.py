@@ -23,11 +23,13 @@ from django.views.decorators.http import require_POST
 from legalizaciones.models import (
     CentroCosto,
     ItemSolicitud,
+    Legalizacion,
     Notificacion,
     Perfil,
     SolicitudCaja,
     TipoCuenta,
 )
+from legalizaciones.utils import sumar_dias_habiles_co
 
 
 # ── Helpers de roles ─────────────────────────────────────────────────────────
@@ -147,7 +149,9 @@ def solicitud_list(request):
     - Empleado:             ve sus propias solicitudes
     """
     user = request.user
-    qs = SolicitudCaja.objects.select_related("solicitante").order_by("-creado_en")
+    qs = SolicitudCaja.objects.select_related(
+        "solicitante", "legalizacion"
+    ).order_by("-creado_en")
 
     filtro = request.GET.get("estado", "").strip()
 
@@ -183,8 +187,16 @@ def solicitud_list(request):
     if filtro:
         qs = qs.filter(estado=filtro)
 
+    solicitudes = list(qs[:200])
+    # Adjuntar alias seguro: el OneToOne lanza RelatedObjectDoesNotExist si no existe
+    for s in solicitudes:
+        try:
+            s.legalizacion_vinculada = s.legalizacion
+        except Exception:
+            s.legalizacion_vinculada = None
+
     return render(request, "solicitudes/list.html", {
-        "solicitudes": qs[:200],
+        "solicitudes": solicitudes,
         "estados": SolicitudCaja.Estado.choices,
         "filtro": filtro,
     })
@@ -353,13 +365,13 @@ def _solicitud_create_post(request, perfil, accion):
         for u in usuarios_grupo("Gerencia Área"):
             _notificar_sol(
                 u, Notificacion.Tipo.SOL_ENVIADA_AREA,
-                f"Nueva solicitud para revisar — {sol.codigo}",
+                f"Nueva solicitud para revisar — {sol.numero_caja}",
                 f"{sol.nombre_completo} solicita una caja por ${sol.valor_caja:,.0f}.",
                 sol,
             )
-        messages.success(request, f"Solicitud {sol.codigo} enviada a Gerencia Área.")
+        messages.success(request, f"Solicitud {sol.numero_caja} enviada a Gerencia Área.")
     else:
-        messages.success(request, f"Solicitud {sol.codigo} guardada como borrador.")
+        messages.success(request, f"Solicitud {sol.numero_caja} guardada como borrador.")
 
     return redirect("solicitud_detail", pk=sol.pk)
 
@@ -399,6 +411,9 @@ def solicitud_detail(request, pk):
     perfil_user, _ = Perfil.objects.get_or_create(user=user)
     firma_guardada_url = perfil_user.firma_imagen.url if perfil_user.firma_imagen else None
 
+    # Legalización vinculada (si ya fue desembolsada)
+    legalizacion = getattr(sol, "legalizacion", None)
+
     contexto = {
         "sol": sol,
         "items": sol.items.all(),
@@ -410,6 +425,7 @@ def solicitud_detail(request, pk):
         "puede_rechazar": puede_rechazar,
         "puede_desembolsar": puede_desembolsar,
         "firma_guardada_url": firma_guardada_url,
+        "legalizacion": legalizacion,
     }
     return render(request, "solicitudes/detail.html", contexto)
 
@@ -448,7 +464,7 @@ def solicitud_enviar(request, pk):
     for u in usuarios_grupo("Gerencia Área"):
         _notificar_sol(
             u, Notificacion.Tipo.SOL_ENVIADA_AREA,
-            f"Nueva solicitud para revisar — {sol.codigo}",
+            f"Nueva solicitud para revisar — {sol.numero_caja}",
             f"{sol.nombre_completo} solicita una caja por ${sol.valor_caja:,.0f}.",
             sol,
         )
@@ -486,14 +502,14 @@ def solicitud_aprobar_area(request, pk):
     # Notificar al empleado y a Gerencia Corporativa
     _notificar_sol(
         sol.solicitante, Notificacion.Tipo.SOL_APROBADA_AREA,
-        f"Tu solicitud {sol.codigo} fue aprobada por Gerencia Área",
+        f"Tu solicitud {sol.numero_caja} fue aprobada por Gerencia Área",
         "Ahora pasa a aprobación de Gerencia Corporativa.",
         sol,
     )
     for u in usuarios_grupo("Gerencia Corporativa"):
         _notificar_sol(
             u, Notificacion.Tipo.SOL_ENVIADA_AREA,
-            f"Solicitud para aprobación corporativa — {sol.codigo}",
+            f"Solicitud para aprobación corporativa — {sol.numero_caja}",
             f"{sol.nombre_completo} — ${sol.valor_caja:,.0f}.",
             sol,
         )
@@ -531,14 +547,14 @@ def solicitud_aprobar_corp(request, pk):
     # Notificar al empleado y a Tesorería (Aprobadores)
     _notificar_sol(
         sol.solicitante, Notificacion.Tipo.SOL_APROBADA_CORP,
-        f"Tu solicitud {sol.codigo} fue aprobada — pendiente desembolso",
+        f"Tu solicitud {sol.numero_caja} fue aprobada — pendiente desembolso",
         "Tesorería desembolsará los fondos próximamente.",
         sol,
     )
     for u in usuarios_grupo("Aprobadores"):
         _notificar_sol(
             u, Notificacion.Tipo.SOL_APROBADA_CORP,
-            f"Solicitud lista para desembolsar — {sol.codigo}",
+            f"Solicitud lista para desembolsar — {sol.numero_caja}",
             f"{sol.nombre_completo} — ${sol.valor_caja:,.0f}.",
             sol,
         )
@@ -571,7 +587,7 @@ def solicitud_rechazar(request, pk):
 
     _notificar_sol(
         sol.solicitante, Notificacion.Tipo.SOL_RECHAZADA,
-        f"Tu solicitud {sol.codigo} fue rechazada",
+        f"Tu solicitud {sol.numero_caja} fue rechazada",
         motivo,
         sol,
     )
@@ -602,18 +618,47 @@ def solicitud_desembolsar(request, pk):
         messages.error(request, "Fecha de desembolso inválida.")
         return redirect("solicitud_detail", pk=pk)
 
-    sol.fecha_desembolso = fecha
-    sol.estado = SolicitudCaja.Estado.DESEMBOLSADA
-    sol.save()
+    with transaction.atomic():
+        sol.fecha_desembolso = fecha
+        sol.estado = SolicitudCaja.Estado.DESEMBOLSADA
+        sol.save(update_fields=["fecha_desembolso", "estado", "actualizado_en"])
 
-    # En Fase 6 acá creamos la Legalización + fecha_cierre = +8 días hábiles
-    _notificar_sol(
-        sol.solicitante, Notificacion.Tipo.SOL_DESEMBOLSADA,
-        f"Caja desembolsada — {sol.codigo}",
-        f"Tu caja por ${sol.valor_caja:,.0f} fue desembolsada el {fecha.strftime('%d/%m/%Y')}.",
-        sol,
-    )
-    messages.success(request, "Desembolso registrado.")
+        # Crear la Legalización si aún no existe (idempotente)
+        leg, creada = Legalizacion.objects.get_or_create(
+            solicitud=sol,
+            defaults={
+                "monto_aprobado": sol.valor_caja,
+                "fecha_solicitud": sol.fecha_solicitud,
+                "fecha_consignacion": fecha,
+                "fecha_cierre": sumar_dias_habiles_co(fecha, 8),
+                "elaboro": sol.solicitante,
+                "estado": Legalizacion.Estado.BORRADOR,
+            },
+        )
+
+        if creada:
+            # Actualizar el estado de la solicitud a LEGALIZADA cuando se apruebe
+            # la legalización (eso se maneja en las vistas de legalizaciones)
+            _notificar_sol(
+                sol.solicitante, Notificacion.Tipo.SOL_DESEMBOLSADA,
+                f"Caja desembolsada — {sol.numero_caja}",
+                (
+                    f"Tu caja por ${sol.valor_caja:,.0f} fue desembolsada el "
+                    f"{fecha.strftime('%d/%m/%Y')}. Tienes hasta el "
+                    f"{leg.fecha_cierre.strftime('%d/%m/%Y')} para legalizarla."
+                ),
+                sol,
+            )
+
+    if creada:
+        messages.success(
+            request,
+            f"Desembolso registrado. Legalización {leg.codigo} creada — "
+            f"plazo máximo: {leg.fecha_cierre.strftime('%d/%m/%Y')} (8 días hábiles).",
+        )
+    else:
+        messages.info(request, "Desembolso actualizado. La legalización ya existía.")
+
     return redirect("solicitud_detail", pk=pk)
 
 

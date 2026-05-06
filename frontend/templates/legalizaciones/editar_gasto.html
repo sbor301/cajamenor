@@ -4,7 +4,9 @@
 {% block page_title %}Editar Gasto{% endblock %}
 
 {% block content %}
-<div class="max-w-3xl space-y-6">
+<div class="max-w-3xl space-y-6"
+     x-data="editarGasto({{ gasto.valor_base|floatformat:0 }}, {{ gasto.iva_porcentaje }})"
+     x-init="init()">
 
   <!-- Breadcrumb -->
   <nav class="flex items-center gap-1.5 text-xs text-slate-400">
@@ -20,7 +22,6 @@
     <span class="text-slate-500 font-medium">Editar Gasto</span>
   </nav>
 
-  <!-- Aviso de rechazo -->
   {% if gasto.motivo_rechazo %}
   <div class="bg-red-50 border border-red-200 rounded-2xl p-4 flex items-start gap-3">
     <svg class="w-5 h-5 text-red-400 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -29,150 +30,155 @@
     </svg>
     <div>
       <p class="text-sm font-semibold text-red-700">Motivo del rechazo</p>
-      <p class="text-sm text-red-600 mt-0.5 leading-relaxed">{{ gasto.motivo_rechazo }}</p>
+      <p class="text-sm text-red-600 mt-0.5">{{ gasto.motivo_rechazo }}</p>
     </div>
   </div>
   {% endif %}
 
-  <!-- Formulario -->
   <form method="post" enctype="multipart/form-data" class="space-y-6">
     {% csrf_token %}
 
     <div class="bg-white rounded-2xl border border-slate-200 p-6 space-y-5">
       <h2 class="text-base font-semibold text-slate-800">Datos del Gasto</h2>
 
-      <!-- Fila 1: Fecha y Proveedor -->
+      <!-- Fecha + Proveedor -->
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
         <div>
-          <label class="block text-sm font-medium text-slate-700 mb-1.5">
-            Fecha <span class="text-red-500">*</span>
-          </label>
+          <label class="block text-sm font-medium text-slate-700 mb-1.5">Fecha <span class="text-red-500">*</span></label>
           <input type="date" name="fecha" required
                  value="{{ gasto.fecha|date:'Y-m-d' }}"
                  max="{% now 'Y-m-d' %}"
-                 class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm text-slate-900
-                        focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"/>
+                 class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm
+                        focus:outline-none focus:ring-2 focus:ring-indigo-500"/>
         </div>
         <div>
-          <label class="block text-sm font-medium text-slate-700 mb-1.5">
-            Proveedor / Cliente <span class="text-red-500">*</span>
-          </label>
+          <label class="block text-sm font-medium text-slate-700 mb-1.5">Proveedor / Cliente <span class="text-red-500">*</span></label>
           <input type="text" name="cliente_proveedor" required maxlength="255"
                  value="{{ gasto.cliente_proveedor }}"
-                 placeholder="Nombre de la empresa o persona"
-                 class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm text-slate-900
-                        focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"/>
+                 class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm
+                        focus:outline-none focus:ring-2 focus:ring-indigo-500"/>
         </div>
       </div>
 
-      <!-- Fila 2: NIT y Factura -->
+      <!-- NIT + Factura -->
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
         <div>
-          <label class="block text-sm font-medium text-slate-700 mb-1.5">
-            Cédula / NIT <span class="text-red-500">*</span>
-          </label>
+          <label class="block text-sm font-medium text-slate-700 mb-1.5">Cédula / NIT <span class="text-red-500">*</span></label>
           <input type="text" name="cedula_nit" required maxlength="32"
                  value="{{ gasto.cedula_nit }}"
-                 placeholder="900123456-7"
-                 class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm text-slate-900
-                        font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"/>
-          <p class="text-xs text-slate-400 mt-1">Solo dígitos y guión. Ej: 900123456-7</p>
+                 class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm font-mono
+                        focus:outline-none focus:ring-2 focus:ring-indigo-500"/>
         </div>
         <div>
-          <label class="block text-sm font-medium text-slate-700 mb-1.5">
-            Número de Factura <span class="text-red-500">*</span>
-          </label>
+          <label class="block text-sm font-medium text-slate-700 mb-1.5">Número de Factura <span class="text-red-500">*</span></label>
           <input type="text" name="numero_factura" required maxlength="64"
                  value="{{ gasto.numero_factura }}"
-                 placeholder="FE-001"
-                 class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm text-slate-900
-                        focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"/>
+                 class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm
+                        focus:outline-none focus:ring-2 focus:ring-indigo-500"/>
         </div>
       </div>
 
-      <!-- Fila 3: Centro de costos -->
+      <!-- Centro de costos -->
       <div>
-        <label class="block text-sm font-medium text-slate-700 mb-1.5">
-          Centro de Costos <span class="text-red-500">*</span>
-        </label>
+        <label class="block text-sm font-medium text-slate-700 mb-1.5">Centro de Costos <span class="text-red-500">*</span></label>
         <input type="text" name="centro_costos" required maxlength="64"
                value="{{ gasto.centro_costos }}"
-               placeholder="Ej: Administración, Ventas…"
-               class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm text-slate-900
-                      focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"/>
+               class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm
+                      focus:outline-none focus:ring-2 focus:ring-indigo-500"/>
       </div>
 
-      <!-- Fila 4: Valor base e IVA -->
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
-        <div>
-          <label class="block text-sm font-medium text-slate-700 mb-1.5">
-            Valor Base <span class="text-red-500">*</span>
-          </label>
-          <div class="relative">
-            <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm">$</span>
-            <input type="number" name="valor_base" step="0.01" min="0.01" required
-                   value="{{ gasto.valor_base }}"
-                   placeholder="0.00"
-                   class="w-full pl-7 pr-3.5 py-2.5 rounded-xl border border-slate-300 text-sm text-slate-900
-                          focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"/>
+      <!-- ─── Valores ──────────────────────────────────────────────────── -->
+      <div class="rounded-xl border border-slate-100 bg-slate-50/50 p-4 space-y-4">
+        <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Valores</p>
+
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+
+          <!-- Valor base -->
+          <div>
+            <label class="block text-xs font-medium text-slate-600 mb-1.5">
+              Valor base <span class="text-red-500">*</span>
+            </label>
+            <div class="relative">
+              <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">$</span>
+              <input type="text" inputmode="numeric" required x-ref="baseDisplay"
+                     placeholder="0"
+                     @input="fmtBase($event)"
+                     class="w-full pl-6 pr-3 py-2 rounded-lg border border-slate-300 text-sm
+                            focus:outline-none focus:ring-2 focus:ring-indigo-500"/>
+              <input type="hidden" name="valor_base" x-ref="baseHidden"/>
+            </div>
+          </div>
+
+          <!-- % IVA -->
+          <div>
+            <label class="block text-xs font-medium text-slate-600 mb-1.5">% IVA</label>
+            <select name="iva_porcentaje" x-ref="ivaPct"
+                    @change="calcular()"
+                    class="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm bg-white
+                           focus:outline-none focus:ring-2 focus:ring-indigo-500">
+              {% for pct, label in iva_opciones %}
+              <option value="{{ pct }}"
+                {% if gasto.iva_porcentaje == pct %}selected{% endif %}>{{ label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <!-- IVA $ (calculado) -->
+          <div>
+            <label class="block text-xs font-medium text-slate-600 mb-1.5">IVA ($)</label>
+            <div class="relative">
+              <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">$</span>
+              <input type="text" readonly tabindex="-1"
+                     :value="ivaDisplay"
+                     class="w-full pl-6 pr-3 py-2 rounded-lg border border-slate-200 bg-slate-100
+                            text-sm text-slate-600 cursor-not-allowed"/>
+            </div>
           </div>
         </div>
-        <div>
-          <label class="block text-sm font-medium text-slate-700 mb-1.5">IVA</label>
-          <div class="relative">
-            <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm">$</span>
-            <input type="number" name="iva" step="0.01" min="0"
-                   value="{{ gasto.iva }}"
-                   placeholder="0.00"
-                   class="w-full pl-7 pr-3.5 py-2.5 rounded-xl border border-slate-300 text-sm text-slate-900
-                          focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"/>
-          </div>
-          <p class="text-xs text-slate-400 mt-1">Dejar en 0 si no aplica.</p>
+
+        <!-- Total -->
+        <div class="flex items-center justify-between pt-3 border-t border-slate-200">
+          <span class="text-sm font-semibold text-slate-700">Total a pagar</span>
+          <span class="text-xl font-bold text-slate-900 tabular-nums"
+                x-text="'$' + totalDisplay"></span>
         </div>
       </div>
 
       <!-- Observaciones -->
       <div>
         <label class="block text-sm font-medium text-slate-700 mb-1.5">Observaciones</label>
-        <textarea name="observaciones" rows="3"
-                  placeholder="Notas adicionales sobre este gasto (opcional)…"
-                  class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm text-slate-900
-                         focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent
-                         placeholder-slate-400 resize-none">{{ gasto.observaciones|default:'' }}</textarea>
+        <textarea name="observaciones" rows="2"
+                  class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm
+                         focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
+                  >{{ gasto.observaciones|default:'' }}</textarea>
       </div>
 
-      <!-- Archivo de factura -->
+      <!-- Soporte -->
       <div>
-        <label class="block text-sm font-medium text-slate-700 mb-1.5">
-          Soporte / Archivo de factura
-        </label>
+        <label class="block text-sm font-medium text-slate-700 mb-1.5">Soporte / Factura</label>
         {% if gasto.archivo_factura %}
         <div class="flex items-center gap-3 mb-2 p-3 bg-slate-50 rounded-xl border border-slate-200">
           <svg class="w-5 h-5 text-indigo-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                   d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/>
           </svg>
-          <span class="text-xs text-slate-600 truncate">Archivo actual:
+          <span class="text-xs text-slate-600 truncate">
             <a href="{{ gasto.archivo_factura.url }}" target="_blank"
-               class="text-indigo-600 hover:text-indigo-700 underline underline-offset-2">
-              Ver soporte adjunto
-            </a>
+               class="text-indigo-600 hover:underline">Ver soporte adjunto</a>
           </span>
         </div>
-        <p class="text-xs text-slate-400 mb-1.5">Sube un nuevo archivo para reemplazarlo (opcional).</p>
+        <p class="text-xs text-slate-400 mb-1.5">Sube un nuevo archivo para reemplazarlo.</p>
         {% endif %}
         <input type="file" name="archivo_factura" accept=".pdf,.jpg,.jpeg,.png"
                class="block w-full text-sm text-slate-600
-                      file:mr-3 file:py-2 file:px-4
-                      file:rounded-lg file:border-0
-                      file:text-sm file:font-medium
-                      file:bg-indigo-50 file:text-indigo-700
+                      file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0
+                      file:text-sm file:font-medium file:bg-indigo-50 file:text-indigo-700
                       hover:file:bg-indigo-100 cursor-pointer"/>
-        <p class="text-xs text-slate-400 mt-1.5">Formatos: JPG, PNG o PDF. Máx. 10 MB.</p>
+        <p class="text-xs text-slate-400 mt-1">JPG, PNG o PDF · Máx. 10 MB</p>
       </div>
     </div>
 
-    <!-- Botones -->
+    <!-- Acciones -->
     <div class="flex items-center justify-between">
       <a href="{% url 'legalizacion_detail' leg.pk %}"
          class="inline-flex items-center gap-2 text-sm text-slate-500 hover:text-slate-700 transition-colors">
@@ -185,13 +191,45 @@
               class="inline-flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700
                      text-white text-sm font-semibold rounded-xl transition-colors">
         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                d="M5 13l4 4L19 7"/>
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
         </svg>
         Guardar cambios
       </button>
     </div>
   </form>
-
 </div>
+
+<script>
+function editarGasto(baseInicial, pctInicial) {
+  return {
+    baseRaw: baseInicial,
+    ivaCalc: 0,
+    totalCalc: 0,
+
+    init() {
+      this.$refs.baseHidden.value = String(this.baseRaw);
+      this.$refs.baseDisplay.value = this.baseRaw.toLocaleString('es-CO');
+      this.$refs.ivaPct.value = String(pctInicial);
+      this.calcular();
+    },
+
+    get ivaDisplay()   { return this.ivaCalc.toLocaleString('es-CO'); },
+    get totalDisplay() { return this.totalCalc.toLocaleString('es-CO'); },
+
+    fmtBase(e) {
+      const raw = e.target.value.replace(/\D/g, '') || '0';
+      this.baseRaw = parseInt(raw, 10);
+      e.target.value = this.baseRaw.toLocaleString('es-CO');
+      this.$refs.baseHidden.value = raw;
+      this.calcular();
+    },
+
+    calcular() {
+      const pct = parseInt(this.$refs.ivaPct.value) || 0;
+      this.ivaCalc   = Math.round(this.baseRaw * pct / 100);
+      this.totalCalc = this.baseRaw + this.ivaCalc;
+    },
+  };
+}
+</script>
 {% endblock %}

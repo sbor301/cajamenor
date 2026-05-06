@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% load formato %}
-{% block title %}{{ sol.codigo }}{% endblock %}
-{% block page_title %}{{ sol.codigo }}{% endblock %}
+{% block title %}{{ sol.numero_caja }}{% endblock %}
+{% block page_title %}{{ sol.numero_caja }}{% endblock %}
 
 {% block content %}
 <div class="space-y-5">
@@ -11,8 +11,7 @@
     <div class="flex flex-wrap items-start justify-between gap-4">
       <div>
         <p class="text-xs uppercase tracking-wider text-slate-400 font-medium">Solicitud de caja</p>
-        <h1 class="text-2xl font-bold text-slate-900 mt-1">{{ sol.codigo }}</h1>
-        <p class="text-sm text-slate-500 mt-0.5">N° de caja: <span class="font-mono">{{ sol.numero_caja }}</span></p>
+        <h1 class="text-2xl font-bold text-slate-900 mt-1">{{ sol.numero_caja }}</h1>
       </div>
       <div class="text-right">
         {% with e=sol.estado %}
@@ -190,9 +189,16 @@
       <svg class="w-5 h-5 text-indigo-600 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
       </svg>
-      <div>
+      <div class="flex-1">
         <p class="text-sm font-semibold text-indigo-900">Desembolso registrado</p>
-        <p class="text-sm text-indigo-700 mt-1">Fondos consignados el {{ sol.fecha_desembolso|date:"d M Y" }}.</p>
+        <p class="text-sm text-indigo-700 mt-1">Fondos consignados el <strong>{{ sol.fecha_desembolso|date:"d M Y" }}</strong>.</p>
+        {% if legalizacion and legalizacion.fecha_cierre %}
+        <p class="text-sm text-indigo-700 mt-0.5">
+          Plazo máximo de legalización:
+          <strong>{{ legalizacion.fecha_cierre|date:"d M Y" }}</strong>
+          (8 días hábiles).
+        </p>
+        {% endif %}
       </div>
     </div>
   </div>
@@ -265,16 +271,43 @@
   {% endif %}
 
   <!-- Link a legalización si existe -->
-  {% if sol.legalizacion %}
-  <div class="bg-teal-50 border border-teal-200 rounded-2xl p-5 flex items-center justify-between">
-    <div>
-      <p class="text-sm font-semibold text-teal-900">Legalización vinculada</p>
-      <p class="text-sm text-teal-700">{{ sol.legalizacion.codigo }}</p>
+  {% if legalizacion %}
+  <div class="bg-teal-50 border border-teal-200 rounded-2xl p-5">
+    <div class="flex items-center justify-between gap-4 flex-wrap">
+      <div class="flex items-start gap-3">
+        <svg class="w-5 h-5 text-teal-600 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+        </svg>
+        <div>
+          <p class="text-sm font-semibold text-teal-900">Legalización vinculada</p>
+          <p class="text-sm text-teal-700 mt-0.5">
+            <span class="font-mono font-semibold">{{ legalizacion.codigo }}</span>
+            &nbsp;·&nbsp;
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium
+              {% if legalizacion.estado == 'BORRADOR' %}bg-slate-100 text-slate-700
+              {% elif legalizacion.estado == 'ENVIADO' %}bg-amber-100 text-amber-700
+              {% elif legalizacion.estado == 'APROBADO' %}bg-emerald-100 text-emerald-700
+              {% elif legalizacion.estado == 'DEVUELTO' %}bg-orange-100 text-orange-700
+              {% elif legalizacion.estado == 'RECHAZADO' %}bg-red-100 text-red-700
+              {% endif %}">
+              {{ legalizacion.get_estado_display }}
+            </span>
+          </p>
+          {% if legalizacion.fecha_cierre %}
+          <p class="text-xs text-teal-600 mt-1">
+            Plazo: <strong>{{ legalizacion.fecha_cierre|date:"d M Y" }}</strong>
+          </p>
+          {% endif %}
+        </div>
+      </div>
+      <a href="{% url 'legalizacion_detail' legalizacion.numero %}"
+         class="shrink-0 inline-flex items-center gap-2 px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white text-sm font-medium rounded-lg transition-colors">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+        </svg>
+        Abrir legalización
+      </a>
     </div>
-    <a href="{% url 'legalizacion_detail' sol.legalizacion.numero %}"
-       class="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white text-sm font-medium rounded-lg">
-      Ver legalización
-    </a>
   </div>
   {% endif %}
 

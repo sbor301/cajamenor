@@ -38,20 +38,19 @@
       <table class="w-full text-sm">
         <thead class="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider">
           <tr>
-            <th class="text-left px-5 py-3 font-medium">Código</th>
             <th class="text-left px-5 py-3 font-medium">N° Caja</th>
             <th class="text-left px-5 py-3 font-medium">Solicitante</th>
             <th class="text-left px-5 py-3 font-medium">Fecha</th>
             <th class="text-right px-5 py-3 font-medium">Valor</th>
             <th class="text-left px-5 py-3 font-medium">Estado</th>
+            <th class="text-left px-5 py-3 font-medium">Legalización</th>
           </tr>
         </thead>
         <tbody class="divide-y divide-slate-50">
           {% for s in solicitudes %}
           <tr class="hover:bg-slate-50 transition-colors cursor-pointer"
               onclick="window.location='{% url 'solicitud_detail' s.pk %}'">
-            <td class="px-5 py-3.5 font-medium text-slate-900">{{ s.codigo }}</td>
-            <td class="px-5 py-3.5 text-slate-600 font-mono text-xs">{{ s.numero_caja }}</td>
+            <td class="px-5 py-3.5 font-medium font-mono text-slate-900">{{ s.numero_caja }}</td>
             <td class="px-5 py-3.5 text-slate-700">{{ s.nombre_completo|default:s.solicitante }}</td>
             <td class="px-5 py-3.5 text-slate-500">{{ s.fecha_solicitud|date:"d M Y" }}</td>
             <td class="px-5 py-3.5 text-right font-semibold text-slate-900">${{ s.valor_caja|cop }}</td>
@@ -68,6 +67,24 @@
                 {% endif %}">
                 {{ s.get_estado_display }}
               </span>
+              {% endwith %}
+            </td>
+            <td class="px-5 py-3.5" onclick="event.stopPropagation()">
+              {% with leg=s.legalizacion_vinculada %}
+              {% if leg %}
+              <a href="{% url 'legalizacion_detail' leg.numero %}"
+                 class="inline-flex items-center gap-1 text-xs font-medium text-teal-700 hover:text-teal-900 transition-colors">
+                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+                </svg>
+                {{ leg.codigo }}
+              </a>
+              {% if leg.fecha_cierre %}
+              <p class="text-[11px] text-slate-400 mt-0.5">Hasta {{ leg.fecha_cierre|date:"d M Y" }}</p>
+              {% endif %}
+              {% else %}
+              <span class="text-xs text-slate-300">—</span>
+              {% endif %}
               {% endwith %}
             </td>
           </tr>

@@ -7,14 +7,17 @@
 
   <!-- Header actions -->
   <div class="flex items-center justify-between">
-    <p class="text-sm text-slate-500">Gestiona y consulta las legalizaciones de gastos.</p>
+    <p class="text-sm text-slate-500">Legalizaciones vinculadas a solicitudes de caja aprobadas.</p>
+    {% if user.is_superuser %}
     <a href="{% url 'legalizacion_create' %}"
-       class="inline-flex items-center gap-2 px-4 py-2.5 bg-brand-600 hover:bg-brand-700 text-white text-sm font-semibold rounded-xl transition-colors">
+       class="inline-flex items-center gap-2 px-4 py-2.5 bg-slate-600 hover:bg-slate-700 text-white text-sm font-semibold rounded-xl transition-colors"
+       title="Solo administradores">
       <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
       </svg>
-      Nueva
+      Nueva (admin)
     </a>
+    {% endif %}
   </div>
 
   <!-- Filtros -->

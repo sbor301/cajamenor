@@ -5,6 +5,7 @@ from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
+from django.db import transaction
 from django.db.models import Count, Q, Sum
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -130,6 +131,16 @@ def legalizacion_list(request):
 @never_cache
 @login_required
 def legalizacion_create(request):
+    # Crear legalizaciones standalone solo está disponible para administradores.
+    # El flujo normal genera la legalización automáticamente al desembolsar una caja.
+    if not request.user.is_superuser:
+        messages.error(
+            request,
+            "Las legalizaciones se generan automáticamente al desembolsar una caja. "
+            "Solicita una caja menor para iniciar el proceso.",
+        )
+        return redirect("solicitud_create")
+
     if request.method == "POST":
         try:
             monto = request.POST.get("monto_aprobado")
@@ -199,11 +210,12 @@ def legalizacion_detail(request, pk):
         gastos.filter(rechazado=False).aggregate(t=Sum("valor"))["t"] or Decimal("0")
     )
 
-    # ¿Puede el empleado editar gastos? En BORRADOR o DEVUELTO, si es el elaborador
+    # ¿Puede agregar/editar gastos?
+    # - Elaborador (empleado) en estado BORRADOR o DEVUELTO
+    # - Superusuario siempre (para gestión y pruebas)
     puede_editar_gastos = (
-        not es_aprobador
-        and leg.estado in (Legalizacion.Estado.BORRADOR, Legalizacion.Estado.DEVUELTO)
-        and leg.elaboro == user
+        leg.estado in (Legalizacion.Estado.BORRADOR, Legalizacion.Estado.DEVUELTO)
+        and (leg.elaboro == user or user.is_superuser)
     )
 
     context = {
@@ -226,9 +238,17 @@ def legalizacion_aprobar(request, pk):
         return redirect("legalizacion_detail", pk=pk)
 
     leg = get_object_or_404(Legalizacion, pk=pk)
-    leg.estado = Legalizacion.Estado.APROBADO
-    leg.aprobado_por = user
-    leg.save()
+    with transaction.atomic():
+        leg.estado = Legalizacion.Estado.APROBADO
+        leg.aprobado_por = user
+        leg.save()
+
+        # Si esta legalización proviene de una solicitud, marcarla como LEGALIZADA
+        if leg.solicitud_id:
+            from legalizaciones.models import SolicitudCaja
+            SolicitudCaja.objects.filter(pk=leg.solicitud_id).update(
+                estado=SolicitudCaja.Estado.LEGALIZADA
+            )
 
     _notificar(
         destinatario=leg.elaboro,
@@ -435,6 +455,56 @@ def legalizacion_devolver(request, pk):
 
 
 @login_required
+def gasto_crear(request, leg_pk):
+    """Empleado (o superusuario) agrega un gasto a una legalización en BORRADOR o DEVUELTO."""
+    from legalizaciones.models import CentroCosto, Gasto
+    leg = get_object_or_404(Legalizacion, pk=leg_pk)
+    user = request.user
+
+    puede = (
+        leg.estado in (Legalizacion.Estado.BORRADOR, Legalizacion.Estado.DEVUELTO)
+        and (leg.elaboro == user or user.is_superuser)
+    )
+    if not puede:
+        messages.error(request, "No puedes agregar gastos a esta legalización en su estado actual.")
+        return redirect("legalizacion_detail", pk=leg_pk)
+
+    centros = CentroCosto.objects.filter(activo=True)
+
+    if request.method == "POST":
+        try:
+            iva_pct = int(request.POST.get("iva_porcentaje") or "19")
+            if iva_pct not in (0, 5, 19):
+                iva_pct = 19
+            gasto = Gasto(
+                legalizacion=leg,
+                fecha=request.POST.get("fecha"),
+                cliente_proveedor=request.POST.get("cliente_proveedor", "").strip(),
+                cedula_nit=request.POST.get("cedula_nit", "").strip(),
+                numero_factura=request.POST.get("numero_factura", "").strip(),
+                centro_costos=request.POST.get("centro_costos", "").strip(),
+                valor_base=Decimal(request.POST.get("valor_base") or "0"),
+                iva_porcentaje=iva_pct,
+                observaciones=request.POST.get("observaciones", "").strip() or None,
+            )
+            if "archivo_factura" in request.FILES:
+                gasto.archivo_factura = request.FILES["archivo_factura"]
+            gasto.full_clean()
+            gasto.save()   # save() calcula iva y valor automáticamente
+            leg.recalcular_saldo(save=True)
+            messages.success(request, "Gasto registrado correctamente.")
+            return redirect("legalizacion_detail", pk=leg_pk)
+        except Exception as e:
+            messages.error(request, f"Error al guardar el gasto: {e}")
+
+    return render(request, "legalizaciones/crear_gasto.html", {
+        "leg": leg,
+        "centros": centros,
+        "iva_opciones": [(0, "0 %"), (5, "5 %"), (19, "19 %")],
+    })
+
+
+@login_required
 def gasto_editar(request, pk):
     """Empleado edita un gasto rechazado mientras la legalización está en estado DEVUELTO."""
     gasto = get_object_or_404(Gasto, pk=pk)
@@ -450,29 +520,34 @@ def gasto_editar(request, pk):
 
     if request.method == "POST":
         try:
-            from datetime import datetime
+            iva_pct = int(request.POST.get("iva_porcentaje") or "19")
+            if iva_pct not in (0, 5, 19):
+                iva_pct = 19
             gasto.fecha = request.POST.get("fecha")
             gasto.cliente_proveedor = request.POST.get("cliente_proveedor", "").strip()
             gasto.cedula_nit = request.POST.get("cedula_nit", "").strip()
             gasto.numero_factura = request.POST.get("numero_factura", "").strip()
             gasto.centro_costos = request.POST.get("centro_costos", "").strip()
             gasto.valor_base = Decimal(request.POST.get("valor_base") or "0")
-            gasto.iva = Decimal(request.POST.get("iva") or "0")
+            gasto.iva_porcentaje = iva_pct
             gasto.observaciones = request.POST.get("observaciones", "").strip() or None
             if "archivo_factura" in request.FILES:
                 gasto.archivo_factura = request.FILES["archivo_factura"]
-            # Al guardar la edición, se limpia el rechazo
             gasto.rechazado = False
             gasto.motivo_rechazo = None
             gasto.full_clean()
-            gasto.save()
+            gasto.save()   # save() recalcula iva y valor
             leg.recalcular_saldo(save=True)
             messages.success(request, "Gasto actualizado correctamente.")
             return redirect("legalizacion_detail", pk=leg.pk)
         except Exception as e:
             messages.error(request, f"Error al guardar el gasto: {e}")
 
-    context = {"gasto": gasto, "leg": leg}
+    context = {
+        "gasto": gasto,
+        "leg": leg,
+        "iva_opciones": [(0, "0 %"), (5, "5 %"), (19, "19 %")],
+    }
     return render(request, "legalizaciones/editar_gasto.html", context)
 
 
@@ -546,7 +621,7 @@ def notificaciones_api(request):
     qs = (
         Notificacion.objects
         .filter(destinatario=request.user)
-        .select_related("legalizacion")
+        .select_related("legalizacion", "solicitud")
         .order_by("-creado_en")[:12]
     )
     items = [
@@ -597,5 +672,5 @@ def notificaciones_list(request):
     """Página completa con todas las notificaciones del usuario."""
     qs = Notificacion.objects.filter(
         destinatario=request.user
-    ).select_related("legalizacion").order_by("-creado_en")
+    ).select_related("legalizacion", "solicitud").order_by("-creado_en")
     return render(request, "notificaciones/list.html", {"notificaciones": qs})

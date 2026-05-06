@@ -86,12 +86,12 @@ class ItemSolicitudInline(admin.TabularInline):
 @admin.register(SolicitudCaja)
 class SolicitudCajaAdmin(admin.ModelAdmin):
     list_display = (
-        "codigo", "numero_caja", "solicitante", "fecha_solicitud",
+        "numero_caja", "solicitante", "fecha_solicitud",
         "valor_caja", "estado", "fecha_desembolso",
     )
     list_filter = ("estado", "fecha_solicitud", "tipo_cuenta")
-    search_fields = ("codigo", "numero_caja", "nombre_completo", "cedula")
-    readonly_fields = ("numero", "codigo", "numero_caja", "creado_en", "actualizado_en")
+    search_fields = ("numero_caja", "nombre_completo", "cedula")
+    readonly_fields = ("numero", "numero_caja", "creado_en", "actualizado_en")
     inlines = [ItemSolicitudInline]
 
 
