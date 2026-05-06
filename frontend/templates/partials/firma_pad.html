@@ -75,6 +75,14 @@ El componente emite:
     {% endif %}
   </div>
 
+  <!--
+    Inputs ocultos: UNO por campo, FUERA de los paneles.
+    Se actualizan imperativamente desde JS para evitar el problema
+    de x-show (no elimina del DOM) y la asincronía de Alpine.
+  -->
+  <input type="hidden" :name="campo + '_tab'" x-ref="inputTab" value="dibujar">
+  <input type="hidden" :name="campo + '_data'" x-ref="inputData" value="">
+
   <!-- Panel: Dibujar -->
   <div x-show="tab==='dibujar'" class="space-y-2">
     <div class="relative border border-slate-200 rounded-xl overflow-hidden bg-white"
@@ -82,7 +90,6 @@ El componente emite:
       <canvas x-ref="canvas"
               class="w-full h-full cursor-crosshair touch-none block"
               style="touch-action: none;"></canvas>
-      <!-- Guía visual cuando está vacío -->
       <div x-show="!tieneFirma"
            class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
         <svg class="w-6 h-6 text-slate-200 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -101,9 +108,6 @@ El componente emite:
       </button>
       <p class="text-[11px] text-slate-300">Trazo suavizado activo</p>
     </div>
-    <!-- Datos base64 ocultos -->
-    <input type="hidden" name="{{ campo }}_tab" value="dibujar">
-    <input type="hidden" name="{{ campo }}_data" :value="dataUrl">
   </div>
 
   <!-- Panel: Subir imagen -->
@@ -114,20 +118,18 @@ El componente emite:
       </svg>
       <span class="text-xs text-slate-400 group-hover:text-indigo-500" x-text="archivoNombre || 'Haz clic o arrastra tu firma aquí'"></span>
       <span class="text-[11px] text-slate-300 mt-0.5">PNG, JPG, WEBP · Máx 2 MB</span>
-      <input type="file" name="{{ campo }}_archivo" accept="image/png,image/jpeg,image/webp"
+      <input type="file" :name="campo + '_archivo'" accept="image/png,image/jpeg,image/webp"
              class="hidden" @change="archivoSeleccionado($event)">
     </label>
-    <input type="hidden" name="{{ campo }}_tab" value="subir">
   </div>
 
   <!-- Panel: Firma guardada del perfil -->
   {% if firma_guardada_url %}
   <div x-show="tab==='guardada'" class="space-y-2">
     <div class="h-28 border border-emerald-200 bg-emerald-50/30 rounded-xl flex items-center justify-center">
-      <img src="{{ firma_guardada_url }}" alt="Firma guardada" class="max-h-24 max-w-full">
+      <img src="{{ firma_guardada_url }}" alt="Firma guardada" class="max-h-24 max-w-full object-contain">
     </div>
     <p class="text-xs text-slate-400">Se usará la firma guardada en tu perfil.</p>
-    <input type="hidden" name="{{ campo }}_tab" value="guardada">
   </div>
   {% endif %}
 
@@ -150,8 +152,14 @@ if (typeof firmaPad === 'undefined') {
       ctx: null,
 
       init() {
+        // Sincronizar input tab al cambiar de pestaña
+        this.$watch('tab', val => {
+          this.$refs.inputTab.value = val;
+          // Limpiar data cuando cambia de tab
+          if (val !== 'dibujar') this.$refs.inputData.value = '';
+        });
+
         const canvas = this.$refs.canvas;
-        // Ajusta resolución real al tamaño CSS para evitar blur
         const ajustar = () => {
           const r = canvas.getBoundingClientRect();
           if (r.width === 0) return;
@@ -167,13 +175,11 @@ if (typeof firmaPad === 'undefined') {
         requestAnimationFrame(ajustar);
         window.addEventListener('resize', ajustar);
 
-        // Eventos de mouse
         canvas.addEventListener('mousedown',  e => this.iniciar(e));
         canvas.addEventListener('mousemove',  e => this.trazo(e));
         canvas.addEventListener('mouseup',    () => this.finalizar());
         canvas.addEventListener('mouseleave', () => this.finalizar());
 
-        // Eventos táctiles
         canvas.addEventListener('touchstart', e => { e.preventDefault(); this.iniciar(e.touches[0]); }, { passive: false });
         canvas.addEventListener('touchmove',  e => { e.preventDefault(); this.trazo(e.touches[0]); },  { passive: false });
         canvas.addEventListener('touchend',   e => { e.preventDefault(); this.finalizar(); },           { passive: false });
@@ -210,10 +216,24 @@ if (typeof firmaPad === 'undefined') {
 
       finalizar() {
         if (!this.dibujando) return;
-        this.dibujando = false;
+        this.dibujando  = false;
         this.tieneFirma = true;
         this.confirmado = true;
-        this.dataUrl = this.$refs.canvas.toDataURL('image/png');
+
+        // Exportar con fondo blanco (PNG visible sobre cualquier fondo)
+        const canvas = this.$refs.canvas;
+        const tmp    = document.createElement('canvas');
+        tmp.width    = canvas.width;
+        tmp.height   = canvas.height;
+        const tCtx   = tmp.getContext('2d');
+        tCtx.fillStyle = '#ffffff';
+        tCtx.fillRect(0, 0, tmp.width, tmp.height);
+        tCtx.drawImage(canvas, 0, 0);
+        const dataUrl = tmp.toDataURL('image/png');
+
+        // Actualizar imperativamente para no depender de la reactividad de Alpine
+        this.dataUrl = dataUrl;
+        this.$refs.inputData.value = dataUrl;
       },
 
       limpiar() {
@@ -222,12 +242,13 @@ if (typeof firmaPad === 'undefined') {
         this.dataUrl    = '';
         this.tieneFirma = false;
         this.confirmado = false;
+        this.$refs.inputData.value = '';
       },
 
       archivoSeleccionado(e) {
         const f = e.target.files[0];
         this.archivoNombre = f ? f.name : '';
-        this.confirmado = !!f;
+        this.confirmado    = !!f;
       },
     };
   }

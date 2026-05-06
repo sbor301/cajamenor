@@ -624,6 +624,7 @@ def perfil_editar(request):
     perfil, _ = Perfil.objects.get_or_create(user=request.user)
 
     if request.method == "POST":
+        # Campos de texto — guardar siempre, sin full_clean()
         perfil.nombre_completo  = request.POST.get("nombre_completo", "").strip()
         perfil.cedula           = request.POST.get("cedula", "").strip()
         perfil.ciudad           = request.POST.get("ciudad", "").strip()
@@ -631,21 +632,55 @@ def perfil_editar(request):
         perfil.numero_cuenta    = request.POST.get("numero_cuenta", "").strip()
         perfil.tipo_cuenta      = request.POST.get("tipo_cuenta", "").strip()
 
+        # Validar cédula manualmente solo si tiene valor
+        from django.core.exceptions import ValidationError as DjValidationError
+        from legalizaciones.models import validar_cedula_nit
+        if perfil.cedula:
+            try:
+                validar_cedula_nit(perfil.cedula)
+            except DjValidationError as exc:
+                messages.error(request, exc.message)
+                return render(request, "solicitudes/perfil.html", {
+                    "perfil": perfil,
+                    "tipos_cuenta": TipoCuenta.choices,
+                })
+
+        # Firma — guardado manual para evitar el bug de FieldFile descriptor
         firma = request.FILES.get("firma_imagen")
+
         if firma:
-            msg = _validar_archivo_firma(firma)
-            if msg:
-                messages.error(request, msg)
-                return redirect("perfil_editar")
-            perfil.firma_imagen = firma
+            if firma.size > MAX_FIRMA_BYTES:
+                messages.error(request, "La firma supera el tamaño máximo de 2 MB.")
+                return render(request, "solicitudes/perfil.html", {
+                    "perfil": perfil, "tipos_cuenta": TipoCuenta.choices,
+                })
+            if firma.content_type not in ALLOWED_FIRMA_TYPES:
+                messages.error(request, f"Formato no permitido ({firma.content_type}). Usa PNG, JPG o WEBP.")
+                return render(request, "solicitudes/perfil.html", {
+                    "perfil": perfil, "tipos_cuenta": TipoCuenta.choices,
+                })
 
-        try:
-            perfil.full_clean()
-            perfil.save()
-            messages.success(request, "Perfil actualizado.")
-        except Exception as e:
-            messages.error(request, f"Error al guardar: {e}")
+            import uuid, os
+            from django.core.files.storage import default_storage
 
+            ext = os.path.splitext(firma.name)[1].lower() or ".png"
+            ruta = f"firmas/perfil/{uuid.uuid4().hex}{ext}"
+            ruta_guardada = default_storage.save(ruta, firma)
+
+            # Borrar firma anterior si existe
+            if perfil.firma_imagen:
+                try:
+                    perfil.firma_imagen.delete(save=False)
+                except Exception:
+                    pass
+
+            # CRÍTICO: asignar la ruta directamente al campo (no .name)
+            # Asignar a perfil.firma_imagen.name modifica un FieldFile temporal
+            # y NO actualiza instance.__dict__, por lo que save() ignora el valor.
+            perfil.firma_imagen = ruta_guardada
+
+        perfil.save()
+        messages.success(request, "Perfil actualizado correctamente.")
         return redirect("perfil_editar")
 
     return render(request, "solicitudes/perfil.html", {

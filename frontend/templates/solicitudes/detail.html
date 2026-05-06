@@ -126,9 +126,10 @@
       {# Empleado #}
       <div class="border border-slate-100 rounded-xl p-4">
         <p class="text-xs text-slate-500 uppercase tracking-wider font-medium mb-2">Empleado</p>
-        <div class="h-24 bg-slate-50 rounded-lg flex items-center justify-center mb-2">
+        <div class="h-28 border border-slate-200 rounded-lg bg-white flex items-center justify-center mb-3 overflow-hidden">
           {% if sol.firma_empleado %}
-            <img src="{{ sol.firma_empleado.url }}" alt="Firma empleado" class="max-h-20 max-w-full">
+            <img src="{{ sol.firma_empleado.url }}" alt="Firma empleado"
+                 class="w-full h-full object-contain p-2">
           {% else %}
             <span class="text-xs text-slate-300 italic">Sin firma</span>
           {% endif %}
@@ -140,11 +141,17 @@
       {# Gerencia Área #}
       <div class="border border-slate-100 rounded-xl p-4">
         <p class="text-xs text-slate-500 uppercase tracking-wider font-medium mb-2">Gerencia de Área</p>
-        <div class="h-24 bg-slate-50 rounded-lg flex items-center justify-center mb-2">
+        <div class="h-28 border border-slate-200 rounded-lg bg-white flex items-center justify-center mb-3 overflow-hidden">
           {% if sol.firma_area %}
-            <img src="{{ sol.firma_area.url }}" alt="Firma área" class="max-h-20 max-w-full">
+            <img src="{{ sol.firma_area.url }}" alt="Firma área"
+                 class="w-full h-full object-contain p-2">
           {% else %}
-            <span class="text-xs text-slate-300 italic">Pendiente</span>
+            <div class="flex flex-col items-center gap-1">
+              <svg class="w-6 h-6 text-slate-200" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
+              </svg>
+              <span class="text-xs text-slate-300 italic">Pendiente</span>
+            </div>
           {% endif %}
         </div>
         <p class="text-sm font-medium text-slate-900">
@@ -156,11 +163,17 @@
       {# Gerencia Corporativa #}
       <div class="border border-slate-100 rounded-xl p-4">
         <p class="text-xs text-slate-500 uppercase tracking-wider font-medium mb-2">Gerencia Corporativa</p>
-        <div class="h-24 bg-slate-50 rounded-lg flex items-center justify-center mb-2">
+        <div class="h-28 border border-slate-200 rounded-lg bg-white flex items-center justify-center mb-3 overflow-hidden">
           {% if sol.firma_corp %}
-            <img src="{{ sol.firma_corp.url }}" alt="Firma corporativa" class="max-h-20 max-w-full">
+            <img src="{{ sol.firma_corp.url }}" alt="Firma corporativa"
+                 class="w-full h-full object-contain p-2">
           {% else %}
-            <span class="text-xs text-slate-300 italic">Pendiente</span>
+            <div class="flex flex-col items-center gap-1">
+              <svg class="w-6 h-6 text-slate-200" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
+              </svg>
+              <span class="text-xs text-slate-300 italic">Pendiente</span>
+            </div>
           {% endif %}
         </div>
         <p class="text-sm font-medium text-slate-900">

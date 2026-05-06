@@ -89,8 +89,9 @@
     </div>
 
     {% if perfil.firma_imagen %}
-    <div class="h-32 bg-slate-50 rounded-xl flex items-center justify-center border border-slate-100">
-      <img src="{{ perfil.firma_imagen.url }}" alt="Firma actual" class="max-h-28">
+    <div class="h-32 border border-slate-200 rounded-xl bg-white overflow-hidden flex items-center justify-center">
+      <img src="{{ perfil.firma_imagen.url }}" alt="Firma guardada"
+           class="w-full h-full object-contain p-3">
     </div>
     {% endif %}
 
