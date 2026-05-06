@@ -1,9 +1,14 @@
 <!DOCTYPE html>
-<html lang="es" class="h-full bg-slate-50">
+<html lang="es" class="h-full">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>{% block title %}Caja Menor{% endblock %} — Gestión de Gastos</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
@@ -14,11 +19,15 @@
               50:  '#eef2ff',
               100: '#e0e7ff',
               500: '#6366f1',
-              600: '#4f46e5',
-              700: '#4338ca',
+              600: '#5b5ef6',
+              700: '#4f46e5',
               800: '#3730a3',
               900: '#312e81',
             }
+          },
+          fontFamily: {
+            sans:    ['"Plus Jakarta Sans"', 'system-ui', 'sans-serif'],
+            display: ['"DM Serif Display"', 'Georgia', 'serif'],
           }
         }
       }
@@ -26,254 +35,416 @@
   </script>
   <script src="https://unpkg.com/htmx.org@1.9.12"></script>
   <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+
   <style>
+    /* ── Reset & base ── */
+    *, *::before, *::after { box-sizing: border-box; }
     [x-cloak] { display: none !important; }
-    .badge-borrador  { display:inline-flex; align-items:center; padding:2px 10px; border-radius:9999px; font-size:0.75rem; font-weight:500; background:#f1f5f9; color:#475569; }
-    .badge-enviado   { display:inline-flex; align-items:center; padding:2px 10px; border-radius:9999px; font-size:0.75rem; font-weight:500; background:#dbeafe; color:#1d4ed8; }
-    .badge-aprobado  { display:inline-flex; align-items:center; padding:2px 10px; border-radius:9999px; font-size:0.75rem; font-weight:500; background:#d1fae5; color:#065f46; }
-    .badge-rechazado { display:inline-flex; align-items:center; padding:2px 10px; border-radius:9999px; font-size:0.75rem; font-weight:500; background:#fee2e2; color:#991b1b; }
-    .badge-devuelto  { display:inline-flex; align-items:center; padding:2px 10px; border-radius:9999px; font-size:0.75rem; font-weight:500; background:#ffedd5; color:#9a3412; }
+
+    :root {
+      /* Sidebar — Pearl & Iris (light) */
+      --sb-bg:          #eef1fb;
+      --sb-border:      rgba(99,102,241,0.1);
+      --sb-hover:       rgba(99,102,241,0.07);
+      --sb-active-bg:   rgba(99,102,241,0.11);
+      --sb-active-line: #5b5ef6;
+      --sb-text:        #5e6e8a;
+      --sb-text-hi:     #1a1f36;
+      --sb-section:     #94a3b8;
+      /* Layout */
+      --topbar-bg:      #ffffff;
+      --topbar-border:  #e8eaef;
+      --content-bg:     #f4f6fc;
+      --card-bg:        #ffffff;
+      /* Accent */
+      --accent:         #5b5ef6;
+      --accent-hi:      #818cf8;
+      --accent-glow:    rgba(91,94,246,0.18);
+      /* Text */
+      --text-900: #0f172a;
+      --text-600: #475569;
+      --text-400: #94a3b8;
+    }
+
+    body {
+      font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+      background: var(--content-bg);
+      color: var(--text-900);
+    }
+
+    /* ── Sidebar shell ── */
+    .sb {
+      background: var(--sb-bg);
+      border-right: 1px solid var(--sb-border);
+    }
+
+    /* ── Sidebar nav items ── */
+    .sb-link {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 9px 12px;
+      border-radius: 10px;
+      font-size: 0.825rem;
+      font-weight: 500;
+      color: var(--sb-text);
+      text-decoration: none;
+      transition: background 0.15s, color 0.15s;
+      position: relative;
+      margin-bottom: 2px;
+    }
+    .sb-link:hover {
+      background: var(--sb-hover);
+      color: var(--sb-text-hi);
+    }
+    .sb-link.active {
+      background: var(--sb-active-bg);
+      color: var(--accent);
+      font-weight: 600;
+    }
+    .sb-link.active::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 6px;
+      bottom: 6px;
+      width: 3px;
+      background: var(--accent);
+      border-radius: 0 3px 3px 0;
+      box-shadow: 0 0 10px var(--accent-glow);
+    }
+    .sb-link svg {
+      flex-shrink: 0;
+      opacity: 0.6;
+      transition: opacity 0.15s;
+    }
+    .sb-link:hover svg,
+    .sb-link.active svg { opacity: 1; }
+
+    /* ── Topbar ── */
+    .topbar {
+      background: var(--topbar-bg);
+      border-bottom: 1px solid var(--topbar-border);
+    }
+    .page-title {
+      font-family: 'DM Serif Display', Georgia, serif;
+      font-size: 1.4rem;
+      color: var(--text-900);
+      letter-spacing: -0.01em;
+      line-height: 1.2;
+    }
+
+    /* ── Badges (global) ── */
+    .badge-base {
+      display: inline-flex;
+      align-items: center;
+      padding: 2px 9px;
+      border-radius: 9999px;
+      font-size: 0.72rem;
+      font-weight: 600;
+      letter-spacing: 0.01em;
+    }
+    .badge-borrador  { @apply badge-base; background: #f1f3f7; color: #5a6478; }
+    .badge-enviado   { @apply badge-base; background: #dbeafe; color: #1d4ed8; }
+    .badge-aprobado  { @apply badge-base; background: #d1fae5; color: #065f46; }
+    .badge-rechazado { @apply badge-base; background: #fee2e2; color: #991b1b; }
+    .badge-devuelto  { @apply badge-base; background: #ffedd5; color: #9a3412; }
+
+    /* badge-base helper for tailwind @apply */
+    .badge-base {
+      display: inline-flex;
+      align-items: center;
+      padding: 2px 9px;
+      border-radius: 9999px;
+      font-size: 0.72rem;
+      font-weight: 600;
+      letter-spacing: 0.01em;
+    }
+    .badge-borrador  { display:inline-flex; align-items:center; padding:2px 9px; border-radius:9999px; font-size:0.72rem; font-weight:600; background:#f1f3f7; color:#5a6478; }
+    .badge-enviado   { display:inline-flex; align-items:center; padding:2px 9px; border-radius:9999px; font-size:0.72rem; font-weight:600; background:#dbeafe; color:#1d4ed8; }
+    .badge-aprobado  { display:inline-flex; align-items:center; padding:2px 9px; border-radius:9999px; font-size:0.72rem; font-weight:600; background:#d1fae5; color:#065f46; }
+    .badge-rechazado { display:inline-flex; align-items:center; padding:2px 9px; border-radius:9999px; font-size:0.72rem; font-weight:600; background:#fee2e2; color:#991b1b; }
+    .badge-devuelto  { display:inline-flex; align-items:center; padding:2px 9px; border-radius:9999px; font-size:0.72rem; font-weight:600; background:#ffedd5; color:#9a3412; }
+
+    /* ── Cards ── */
+    .card {
+      background: var(--card-bg);
+      border-radius: 16px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05), 0 4px 12px rgba(0,0,0,0.04);
+      border: 1px solid rgba(0,0,0,0.04);
+    }
+
+    /* ── Page content entrance ── */
+    .page-fade {
+      animation: pageFade 0.35s cubic-bezier(0.22,1,0.36,1) both;
+    }
+    @keyframes pageFade {
+      from { opacity:0; transform: translateY(8px); }
+      to   { opacity:1; transform: translateY(0); }
+    }
+
+    /* ── Notification bell dropdown ── */
+    .notif-dropdown {
+      background: #fff;
+      border-radius: 16px;
+      border: 1px solid var(--topbar-border);
+      box-shadow: 0 8px 32px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.06);
+    }
+
+    /* ── Scrollbar styling ── */
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.12); border-radius: 10px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,0.2); }
+
+    /* ── Message toasts ── */
+    .toast-success { background:#f0fdf4; border:1px solid #bbf7d0; color:#15803d; }
+    .toast-error   { background:#fef2f2; border:1px solid #fecaca; color:#b91c1c; }
+    .toast-info    { background:#eff6ff; border:1px solid #bfdbfe; color:#1d4ed8; }
+
+    /* ── Mobile sidebar transition ── */
+    [x-transition\:enter] { transition-property: transform; transition-timing-function: cubic-bezier(0.22,1,0.36,1); }
   </style>
 </head>
+
 <body class="h-full" x-data="{ sidebarOpen: false }">
+<div class="flex h-full">
 
-  <div class="flex h-full">
+  <!-- ── Sidebar Desktop ── -->
+  <aside class="hidden lg:flex lg:flex-col w-60 sb fixed inset-y-0 z-20">
+    {% include "partials/sidebar_content.html" %}
+  </aside>
 
-    <!-- Sidebar Desktop -->
-    <aside class="hidden lg:flex lg:flex-col w-64 bg-white border-r border-slate-200 fixed inset-y-0 z-20">
-      {% include "partials/sidebar_content.html" %}
-    </aside>
+  <!-- ── Sidebar Mobile overlay ── -->
+  <div x-show="sidebarOpen" x-cloak @click="sidebarOpen=false"
+       class="fixed inset-0 bg-black/60 backdrop-blur-sm z-30 lg:hidden"
+       x-transition:enter="transition duration-200" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
+       x-transition:leave="transition duration-150" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0">
+  </div>
+  <aside x-show="sidebarOpen" x-cloak
+         x-transition:enter="transition duration-250" x-transition:enter-start="-translate-x-full" x-transition:enter-end="translate-x-0"
+         x-transition:leave="transition duration-200" x-transition:leave-start="translate-x-0" x-transition:leave-end="-translate-x-full"
+         class="fixed inset-y-0 left-0 w-60 sb z-40 lg:hidden flex flex-col">
+    {% include "partials/sidebar_content.html" %}
+  </aside>
 
-    <!-- Sidebar Mobile Overlay -->
-    <div x-show="sidebarOpen" x-cloak @click="sidebarOpen=false"
-         class="fixed inset-0 bg-slate-900/50 z-30 lg:hidden"></div>
-    <aside x-show="sidebarOpen" x-cloak x-transition:enter="transition -translate-x-full duration-200"
-           x-transition:enter-start="-translate-x-full" x-transition:enter-end="translate-x-0"
-           class="fixed inset-y-0 left-0 w-64 bg-white border-r border-slate-200 z-40 lg:hidden flex flex-col">
-      {% include "partials/sidebar_content.html" %}
-    </aside>
+  <!-- ── Main area ── -->
+  <div class="flex-1 flex flex-col lg:pl-60 min-h-full">
 
-    <!-- Main content -->
-    <div class="flex-1 flex flex-col lg:pl-64 min-h-full">
+    <!-- ── Topbar ── -->
+    <header class="topbar sticky top-0 z-10 h-16 flex items-center px-5 gap-4">
 
-      <!-- Topbar -->
-      <header class="sticky top-0 z-10 bg-white border-b border-slate-200 h-20 flex items-center px-6 gap-4">
-        <button @click="sidebarOpen=true" class="lg:hidden p-2 rounded-lg hover:bg-slate-100 text-slate-500">
-          <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+      <!-- Mobile hamburger -->
+      <button @click="sidebarOpen=true"
+              class="lg:hidden w-9 h-9 flex items-center justify-center rounded-lg hover:bg-slate-100 text-slate-500 transition-colors">
+        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16"/>
+        </svg>
+      </button>
+
+      <!-- Page title -->
+      <h1 class="page-title flex-1">{% block page_title %}{% endblock %}</h1>
+
+      {% if user.is_authenticated %}
+
+      <!-- ── Notification bell ── -->
+      <div x-data="{
+        open: false,
+        items: [],
+        noLeidas: {{ notif_no_leidas }},
+        cargado: false,
+        iconPaths: {
+          ENVIADA:           'M12 19l9 2-9-18-9 18 9-2zm0 0v-8',
+          APROBADA:          'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z',
+          RECHAZADA:         'M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z',
+          GASTO_RECHAZADO:   'M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z',
+          DEVUELTA:          'M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6',
+          ALERTA_CIERRE:     'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z',
+          SOL_ENVIADA_AREA:  'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4',
+          SOL_APROBADA_AREA: 'M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z',
+          SOL_APROBADA_CORP: 'M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-2 10v-5a1 1 0 00-1-1h-2a1 1 0 00-1 1v5m4 0H9',
+          SOL_DESEMBOLSADA:  'M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z',
+          SOL_RECHAZADA:     'M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636',
+        },
+        async abrir() {
+          this.open = !this.open;
+          if (this.open && !this.cargado) await this.cargar();
+        },
+        async cargar() {
+          const r = await fetch('{% url "notificaciones_api" %}');
+          const d = await r.json();
+          this.items = d.items;
+          this.noLeidas = d.no_leidas;
+          this.cargado = true;
+        },
+        async marcarTodas() {
+          await fetch('{% url "notificaciones_marcar_todas" %}', {
+            method: 'POST',
+            headers: { 'X-CSRFToken': '{{ csrf_token }}', 'X-Requested-With': 'XMLHttpRequest' }
+          });
+          this.items.forEach(i => i.leida = true);
+          this.noLeidas = 0;
+        },
+        colorClasses(tipo) {
+          return {
+            ENVIADA:           'bg-blue-50 text-blue-500',
+            APROBADA:          'bg-emerald-50 text-emerald-600',
+            RECHAZADA:         'bg-red-50 text-red-500',
+            GASTO_RECHAZADO:   'bg-red-50 text-red-500',
+            DEVUELTA:          'bg-orange-50 text-orange-500',
+            ALERTA_CIERRE:     'bg-yellow-50 text-yellow-600',
+            SOL_ENVIADA_AREA:  'bg-blue-50 text-blue-500',
+            SOL_APROBADA_AREA: 'bg-emerald-50 text-emerald-600',
+            SOL_APROBADA_CORP: 'bg-teal-50 text-teal-600',
+            SOL_DESEMBOLSADA:  'bg-violet-50 text-violet-500',
+            SOL_RECHAZADA:     'bg-red-50 text-red-500',
+          }[tipo] || 'bg-slate-50 text-slate-400';
+        }
+      }" class="relative" @keydown.escape.window="open=false">
+
+        <button @click="abrir()" aria-label="Notificaciones"
+                class="relative w-9 h-9 flex items-center justify-center rounded-lg transition-colors"
+                :class="open ? 'bg-slate-100 text-slate-700' : 'text-slate-400 hover:bg-slate-100 hover:text-slate-600'">
+          <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+            <path stroke-linecap="round" stroke-linejoin="round"
+                  d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+          </svg>
+          <span x-show="noLeidas > 0" x-cloak
+                x-text="noLeidas > 9 ? '9+' : noLeidas"
+                class="absolute -top-0.5 -right-0.5 min-w-[1.1rem] h-[1.1rem] rounded-full
+                       bg-red-500 text-white text-[9px] font-bold
+                       flex items-center justify-center px-0.5 leading-none pointer-events-none">
+          </span>
         </button>
-        <div class="flex-1">
-          <h1 class="text-xl font-bold text-slate-900">{% block page_title %}{% endblock %}</h1>
-        </div>
-        {% if user.is_authenticated %}
 
-        <!-- Campana de notificaciones -->
-        <div x-data="{
-          open: false,
-          items: [],
-          noLeidas: {{ notif_no_leidas }},
-          cargado: false,
-          iconPaths: {
-            // ── Legalizaciones ──────────────────────────────────────────────
-            ENVIADA:           'M12 19l9 2-9-18-9 18 9-2zm0 0v-8',
-            APROBADA:          'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z',
-            RECHAZADA:         'M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z',
-            GASTO_RECHAZADO:   'M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z',
-            DEVUELTA:          'M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6',
-            ALERTA_CIERRE:     'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z',
-            // ── Solicitudes de caja ─────────────────────────────────────────
-            SOL_ENVIADA_AREA:  'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4',
-            SOL_APROBADA_AREA: 'M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z',
-            SOL_APROBADA_CORP: 'M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-2 10v-5a1 1 0 00-1-1h-2a1 1 0 00-1 1v5m4 0H9',
-            SOL_DESEMBOLSADA:  'M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z',
-            SOL_RECHAZADA:     'M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636',
-          },
-          async abrir() {
-            this.open = !this.open;
-            if (this.open && !this.cargado) await this.cargar();
-          },
-          async cargar() {
-            const r = await fetch('{% url "notificaciones_api" %}');
-            const d = await r.json();
-            this.items = d.items;
-            this.noLeidas = d.no_leidas;
-            this.cargado = true;
-          },
-          async marcarTodas() {
-            await fetch('{% url "notificaciones_marcar_todas" %}', {
-              method: 'POST',
-              headers: {
-                'X-CSRFToken': '{{ csrf_token }}',
-                'X-Requested-With': 'XMLHttpRequest'
-              }
-            });
-            this.items.forEach(i => i.leida = true);
-            this.noLeidas = 0;
-          },
-          colorClasses(tipo) {
-            return {
-              // ── Legalizaciones ────────────────────────────────────────────
-              ENVIADA:           'bg-blue-50 text-blue-500',
-              APROBADA:          'bg-emerald-50 text-emerald-500',
-              RECHAZADA:         'bg-red-50 text-red-500',
-              GASTO_RECHAZADO:   'bg-red-50 text-red-500',
-              DEVUELTA:          'bg-orange-50 text-orange-500',
-              ALERTA_CIERRE:     'bg-yellow-50 text-yellow-600',
-              // ── Solicitudes de caja ───────────────────────────────────────
-              SOL_ENVIADA_AREA:  'bg-blue-50 text-blue-500',
-              SOL_APROBADA_AREA: 'bg-emerald-50 text-emerald-500',
-              SOL_APROBADA_CORP: 'bg-teal-50 text-teal-600',
-              SOL_DESEMBOLSADA:  'bg-violet-50 text-violet-500',
-              SOL_RECHAZADA:     'bg-red-50 text-red-500',
-            }[tipo] || 'bg-slate-50 text-slate-400';
-          }
-        }" class="relative" @keydown.escape="open=false">
+        <!-- Dropdown -->
+        <div x-show="open" x-cloak @click.away="open=false"
+             x-transition:enter="transition ease-out duration-150"
+             x-transition:enter-start="opacity-0 scale-95 -translate-y-1"
+             x-transition:enter-end="opacity-100 scale-100 translate-y-0"
+             x-transition:leave="transition ease-in duration-100"
+             x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0 scale-95"
+             class="notif-dropdown absolute right-0 top-full mt-2 w-80 sm:w-96 z-50 overflow-hidden origin-top-right">
 
-          <!-- Botón campana -->
-          <button @click="abrir()"
-                  class="relative p-2 rounded-xl hover:bg-slate-100 text-slate-500 transition-colors"
-                  :class="open ? 'bg-slate-100' : ''"
-                  aria-label="Notificaciones">
-            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                    d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
-            </svg>
-            <!-- Badge -->
-            <span x-show="noLeidas > 0" x-cloak
-                  x-text="noLeidas > 9 ? '9+' : noLeidas"
-                  class="absolute -top-0.5 -right-0.5 min-w-[1.15rem] h-[1.15rem] rounded-full
-                         bg-red-500 text-white text-[10px] font-bold
-                         flex items-center justify-center px-1 leading-none pointer-events-none">
-            </span>
-          </button>
+          <div class="flex items-center justify-between px-4 py-3 border-b border-slate-100">
+            <div class="flex items-center gap-2">
+              <span class="text-sm font-semibold text-slate-800">Notificaciones</span>
+              <span x-show="noLeidas > 0" x-text="noLeidas"
+                    class="px-1.5 py-0.5 rounded-full bg-red-100 text-red-600 text-xs font-bold leading-none">
+              </span>
+            </div>
+            <button @click="marcarTodas()" x-show="noLeidas > 0"
+                    class="text-xs text-brand-600 hover:text-brand-700 font-medium transition-colors">
+              Marcar todas
+            </button>
+          </div>
 
-          <!-- Dropdown -->
-          <div x-show="open" x-cloak @click.away="open=false"
-               x-transition:enter="transition ease-out duration-150"
-               x-transition:enter-start="opacity-0 scale-95 -translate-y-1"
-               x-transition:enter-end="opacity-100 scale-100 translate-y-0"
-               x-transition:leave="transition ease-in duration-100"
-               x-transition:leave-start="opacity-100 scale-100"
-               x-transition:leave-end="opacity-0 scale-95"
-               class="absolute right-0 top-full mt-2 w-80 sm:w-96 bg-white rounded-2xl
-                      border border-slate-200 shadow-xl z-50 overflow-hidden origin-top-right">
-
-            <!-- Header -->
-            <div class="flex items-center justify-between px-4 py-3.5 border-b border-slate-100">
-              <div class="flex items-center gap-2">
-                <h3 class="text-sm font-semibold text-slate-800">Notificaciones</h3>
-                <span x-show="noLeidas > 0" x-text="noLeidas"
-                      class="px-1.5 py-0.5 rounded-full bg-red-100 text-red-600 text-xs font-bold leading-none">
-                </span>
+          <div class="max-h-[26rem] overflow-y-auto divide-y divide-slate-50">
+            <template x-if="!cargado">
+              <div class="px-4 py-8 flex items-center justify-center gap-2 text-sm text-slate-400">
+                <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
+                </svg>
+                Cargando…
               </div>
-              <button @click="marcarTodas()" x-show="noLeidas > 0"
-                      class="text-xs text-indigo-600 hover:text-indigo-700 font-medium transition-colors">
-                Marcar todas como leídas
-              </button>
-            </div>
+            </template>
+            <template x-if="cargado && items.length === 0">
+              <div class="px-4 py-10 text-center">
+                <svg class="w-8 h-8 text-slate-200 mx-auto mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                        d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+                </svg>
+                <p class="text-sm text-slate-400 font-medium">Sin notificaciones</p>
+              </div>
+            </template>
+            <template x-if="cargado && items.length > 0">
+              <div>
+                <template x-for="n in items" :key="n.id">
+                  <a :href="n.url_leer"
+                     class="flex items-start gap-3 px-4 py-3.5 hover:bg-slate-50 transition-colors"
+                     :class="n.leida ? '' : 'bg-indigo-50/25'">
+                    <div class="w-8 h-8 rounded-full flex items-center justify-center shrink-0 mt-0.5"
+                         :class="colorClasses(n.tipo)">
+                      <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round"
+                              :d="iconPaths[n.tipo] || 'M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z'"/>
+                      </svg>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                      <p class="text-sm font-semibold text-slate-800 leading-tight" x-text="n.titulo"></p>
+                      <p class="text-xs text-slate-500 mt-0.5 leading-relaxed line-clamp-2" x-text="n.mensaje"></p>
+                      <p class="text-[11px] text-slate-400 mt-1 font-medium" x-text="'hace ' + n.hace"></p>
+                    </div>
+                    <span x-show="!n.leida"
+                          class="w-1.5 h-1.5 rounded-full bg-brand-600 shrink-0 mt-2.5"></span>
+                  </a>
+                </template>
+              </div>
+            </template>
+          </div>
 
-            <!-- Lista -->
-            <div class="max-h-[26rem] overflow-y-auto divide-y divide-slate-50">
-
-              <!-- Cargando -->
-              <template x-if="!cargado">
-                <div class="px-4 py-8 flex items-center justify-center gap-2 text-sm text-slate-400">
-                  <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
-                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
-                  </svg>
-                  Cargando…
-                </div>
-              </template>
-
-              <!-- Vacío -->
-              <template x-if="cargado && items.length === 0">
-                <div class="px-4 py-10 text-center">
-                  <svg class="w-8 h-8 text-slate-200 mx-auto mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                          d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
-                  </svg>
-                  <p class="text-sm text-slate-400">Sin notificaciones</p>
-                </div>
-              </template>
-
-              <!-- Items -->
-              <template x-if="cargado && items.length > 0">
-                <div>
-                  <template x-for="n in items" :key="n.id">
-                    <a :href="n.url_leer"
-                       class="flex items-start gap-3 px-4 py-3.5 hover:bg-slate-50 transition-colors group"
-                       :class="n.leida ? '' : 'bg-indigo-50/30'">
-                      <!-- Icono tipo -->
-                      <div class="w-8 h-8 rounded-full flex items-center justify-center shrink-0 mt-0.5"
-                           :class="colorClasses(n.tipo)">
-                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                :d="iconPaths[n.tipo] || 'M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z'"/>
-                        </svg>
-                      </div>
-                      <!-- Texto -->
-                      <div class="flex-1 min-w-0">
-                        <p class="text-sm font-semibold text-slate-800 leading-tight" x-text="n.titulo"></p>
-                        <p class="text-xs text-slate-500 mt-0.5 leading-relaxed line-clamp-2" x-text="n.mensaje"></p>
-                        <p class="text-[11px] text-slate-400 mt-1" x-text="'hace ' + n.hace"></p>
-                      </div>
-                      <!-- Punto no leída -->
-                      <span x-show="!n.leida"
-                            class="w-2 h-2 rounded-full bg-indigo-500 shrink-0 mt-2"></span>
-                    </a>
-                  </template>
-                </div>
-              </template>
-            </div>
-
-            <!-- Footer -->
-            <div class="px-4 py-3 border-t border-slate-100 bg-slate-50/50">
-              <a href="{% url 'notificaciones_list' %}"
-                 class="text-xs text-indigo-600 hover:text-indigo-700 font-medium transition-colors">
-                Ver todas las notificaciones →
-              </a>
-            </div>
+          <div class="px-4 py-3 border-t border-slate-100 bg-slate-50/60">
+            <a href="{% url 'notificaciones_list' %}"
+               class="text-xs text-brand-600 hover:text-brand-700 font-semibold transition-colors">
+              Ver todas las notificaciones →
+            </a>
           </div>
         </div>
-
-        <!-- Logout -->
-        <a href="{% url 'logout' %}"
-           class="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold text-slate-500
-                  hover:bg-red-50 hover:text-red-600 border border-slate-200 hover:border-red-200 transition-all">
-          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                  d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
-          </svg>
-          <span>Salir</span>
-        </a>
-        {% endif %}
-      </header>
-
-      <!-- Messages -->
-      {% if messages %}
-      <div class="px-6 pt-4 space-y-2">
-        {% for message in messages %}
-        <div x-data="{ show: true }" x-show="show" x-init="setTimeout(() => show=false, 4000)"
-             class="flex items-center justify-between p-4 rounded-xl text-sm font-medium
-               {% if message.tags == 'error' %}bg-red-50 text-red-700 border border-red-200
-               {% else %}bg-emerald-50 text-emerald-700 border border-emerald-200{% endif %}">
-          <span>{{ message }}</span>
-          <button @click="show=false" class="ml-4 opacity-60 hover:opacity-100">✕</button>
-        </div>
-        {% endfor %}
       </div>
+
+      <!-- ── Logout ── -->
+      <a href="{% url 'logout' %}"
+         class="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold text-slate-400
+                hover:bg-red-50 hover:text-red-500 transition-all border border-transparent hover:border-red-100">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round"
+                d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+        </svg>
+        Salir
+      </a>
       {% endif %}
+    </header>
 
-      <!-- Page content -->
-      <main class="flex-1 p-6">
-        {% block content %}{% endblock %}
-      </main>
-
-      <footer class="text-center text-xs text-slate-400 py-4 border-t border-slate-100">
-        Caja Menor © {% now "Y" %} — Sistema de Gestión de Gastos
-      </footer>
+    <!-- ── Toast messages ── -->
+    {% if messages %}
+    <div class="px-5 pt-4 space-y-2">
+      {% for message in messages %}
+      <div x-data="{ show: true }"
+           x-show="show"
+           x-init="setTimeout(() => show=false, 4500)"
+           x-transition:leave="transition duration-300"
+           x-transition:leave-start="opacity-100 translate-y-0"
+           x-transition:leave-end="opacity-0 -translate-y-2"
+           class="flex items-center justify-between px-4 py-3 rounded-xl text-sm font-medium
+             {% if message.tags == 'error' %}toast-error{% else %}toast-success{% endif %}">
+        <div class="flex items-center gap-2.5">
+          {% if message.tags == 'error' %}
+          <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+          </svg>
+          {% else %}
+          <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+          </svg>
+          {% endif %}
+          <span>{{ message }}</span>
+        </div>
+        <button @click="show=false" class="ml-4 opacity-50 hover:opacity-90 transition-opacity text-lg leading-none">&times;</button>
+      </div>
+      {% endfor %}
     </div>
-  </div>
+    {% endif %}
 
+    <!-- ── Page content ── -->
+    <main class="flex-1 p-5 page-fade">
+      {% block content %}{% endblock %}
+    </main>
+
+    <footer class="text-center text-xs py-3 border-t" style="color:var(--sb-section);border-color:var(--topbar-border);background:var(--topbar-bg)">
+      Caja Menor &copy; {% now "Y" %} &mdash; Sistema de Gestión de Gastos
+    </footer>
+  </div>
+</div>
 </body>
 </html>

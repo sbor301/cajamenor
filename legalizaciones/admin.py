@@ -41,6 +41,12 @@ class LegalizacionAdmin(admin.ModelAdmin):
     list_filter = ("estado", "fecha_solicitud", "elaboro")
     search_fields = ("numero", "elaboro__username", "aprobado_por__username")
     readonly_fields = ("numero", "saldo", "creado_en", "actualizado_en")
+    fields = (
+        "numero", "codigo", "elaboro", "solicitud", "estado",
+        "monto_aprobado", "saldo", "fecha_solicitud", "fecha_consignacion",
+        "aprobado_por", "motivo_aprobador",
+        "creado_en", "actualizado_en",
+    )
     inlines = [GastoInline]
 
 

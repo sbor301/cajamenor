@@ -16,7 +16,7 @@ from django.views.decorators.cache import never_cache
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 
-from legalizaciones.models import Gasto, Legalizacion, Notificacion
+from legalizaciones.models import Gasto, Legalizacion, Notificacion, SolicitudCaja
 
 
 # ── Helper de notificaciones ──────────────────────────────────────────────────
@@ -67,26 +67,75 @@ def logout_view(request):
 @login_required
 def dashboard(request):
     user = request.user
-    es_aprobador = user.is_superuser or user.groups.filter(name="Aprobadores").exists()
+    es_aprobador  = user.is_superuser or user.groups.filter(name="Aprobadores").exists()
+    es_ger_area   = user.is_superuser or user.groups.filter(name="Gerencia Área").exists()
+    es_ger_corp   = user.is_superuser or user.groups.filter(name="Gerencia Corporativa").exists()
 
-    qs = Legalizacion.objects.all() if es_aprobador else Legalizacion.objects.filter(elaboro=user)
+    # ── Legalizaciones ────────────────────────────────────────────────────
+    qs_leg = Legalizacion.objects.all() if es_aprobador else Legalizacion.objects.filter(elaboro=user)
 
-    stats = qs.aggregate(
+    stats_leg = qs_leg.aggregate(
         total=Count("numero"),
         monto_total=Sum("monto_aprobado"),
         saldo_total=Sum("saldo"),
-        pendientes=Count("numero", filter=Q(estado=Legalizacion.Estado.BORRADOR)),
+        borradores=Count("numero", filter=Q(estado=Legalizacion.Estado.BORRADOR)),
         enviadas=Count("numero", filter=Q(estado=Legalizacion.Estado.ENVIADO)),
         aprobadas=Count("numero", filter=Q(estado=Legalizacion.Estado.APROBADO)),
         rechazadas=Count("numero", filter=Q(estado=Legalizacion.Estado.RECHAZADO)),
+        devueltas=Count("numero", filter=Q(estado=Legalizacion.Estado.DEVUELTO)),
     )
+    recientes_leg = qs_leg.select_related("elaboro", "elaboro__perfil").order_by("-creado_en")[:5]
 
-    recientes = qs.order_by("-creado_en")[:5]
+    # ── Solicitudes de Caja ───────────────────────────────────────────────
+    if user.is_superuser:
+        qs_sol = SolicitudCaja.objects.all()
+    elif es_ger_corp:
+        qs_sol = SolicitudCaja.objects.all()
+    elif es_ger_area:
+        qs_sol = SolicitudCaja.objects.all()
+    else:
+        qs_sol = SolicitudCaja.objects.filter(solicitante=user)
+
+    stats_sol = qs_sol.aggregate(
+        total=Count("numero"),
+        monto_total=Sum("valor_caja"),
+        borradores=Count("numero", filter=Q(estado=SolicitudCaja.Estado.BORRADOR)),
+        pend_area=Count("numero", filter=Q(estado=SolicitudCaja.Estado.PEND_AREA)),
+        pend_corp=Count("numero", filter=Q(estado=SolicitudCaja.Estado.PEND_CORP)),
+        aprobadas=Count("numero", filter=Q(estado=SolicitudCaja.Estado.APROBADA)),
+        desembolsadas=Count("numero", filter=Q(estado=SolicitudCaja.Estado.DESEMBOLSADA)),
+        legalizadas=Count("numero", filter=Q(estado=SolicitudCaja.Estado.LEGALIZADA)),
+        rechazadas=Count("numero", filter=Q(estado=SolicitudCaja.Estado.RECHAZADA)),
+    )
+    recientes_sol = qs_sol.select_related("solicitante", "solicitante__perfil").order_by("-creado_en")[:5]
+
+    # ── Acciones pendientes según rol ─────────────────────────────────────
+    acciones = []
+    if es_ger_area:
+        n = SolicitudCaja.objects.filter(estado=SolicitudCaja.Estado.PEND_AREA).count()
+        if n:
+            acciones.append({"texto": f"{n} solicitud{'es' if n > 1 else ''} esperando aprobación de Área", "url": "solicitud_list", "color": "amber"})
+    if es_ger_corp:
+        n = SolicitudCaja.objects.filter(estado=SolicitudCaja.Estado.PEND_CORP).count()
+        if n:
+            acciones.append({"texto": f"{n} solicitud{'es' if n > 1 else ''} esperando aprobación Corporativa", "url": "solicitud_list", "color": "orange"})
+    if es_aprobador:
+        n = Legalizacion.objects.filter(estado=Legalizacion.Estado.ENVIADO).count()
+        if n:
+            acciones.append({"texto": f"{n} legalización{'es' if n > 1 else ''} pendiente{'s' if n > 1 else ''} de revisión", "url": "legalizacion_list", "color": "violet"})
+
+    stats_leg["rech_dev"] = (stats_leg.get("rechazadas") or 0) + (stats_leg.get("devueltas") or 0)
+    stats_sol["pend_total"] = (stats_sol.get("pend_area") or 0) + (stats_sol.get("pend_corp") or 0)
 
     context = {
-        "stats": stats,
-        "recientes": recientes,
+        "stats_leg": stats_leg,
+        "stats_sol": stats_sol,
+        "recientes_leg": recientes_leg,
+        "recientes_sol": recientes_sol,
         "es_aprobador": es_aprobador,
+        "es_ger_area": es_ger_area,
+        "es_ger_corp": es_ger_corp,
+        "acciones": acciones,
     }
     return render(request, "dashboard/index.html", context)
 
@@ -230,6 +279,7 @@ def legalizacion_detail(request, pk):
 
 
 @login_required
+@require_POST
 def legalizacion_aprobar(request, pk):
     user = request.user
     es_aprobador = user.is_superuser or user.groups.filter(name="Aprobadores").exists()
@@ -237,15 +287,24 @@ def legalizacion_aprobar(request, pk):
         messages.error(request, "No tienes permiso para aprobar legalizaciones.")
         return redirect("legalizacion_detail", pk=pk)
 
+    justificacion = request.POST.get("justificacion", "").strip()
+    if not justificacion:
+        messages.error(request, "Debes ingresar una justificación para aprobar la legalización.")
+        return redirect("legalizacion_detail", pk=pk)
+
     leg = get_object_or_404(Legalizacion, pk=pk)
+    if leg.estado != Legalizacion.Estado.ENVIADO:
+        messages.error(request, "Solo se pueden aprobar legalizaciones en estado Enviado.")
+        return redirect("legalizacion_detail", pk=pk)
+
     with transaction.atomic():
         leg.estado = Legalizacion.Estado.APROBADO
         leg.aprobado_por = user
+        leg.motivo_aprobador = justificacion
         leg.save()
 
         # Si esta legalización proviene de una solicitud, marcarla como LEGALIZADA
         if leg.solicitud_id:
-            from legalizaciones.models import SolicitudCaja
             SolicitudCaja.objects.filter(pk=leg.solicitud_id).update(
                 estado=SolicitudCaja.Estado.LEGALIZADA
             )
@@ -254,7 +313,7 @@ def legalizacion_aprobar(request, pk):
         destinatario=leg.elaboro,
         tipo=Notificacion.Tipo.APROBADA,
         titulo=f"Legalización {leg.codigo} aprobada",
-        mensaje=f"Tu legalización fue aprobada por {user.get_full_name() or user.username}.",
+        mensaje=f"Tu legalización fue aprobada por {user.get_full_name() or user.username}. {justificacion}",
         url=reverse("legalizacion_detail", args=[leg.pk]),
         legalizacion=leg,
     )
@@ -264,6 +323,7 @@ def legalizacion_aprobar(request, pk):
 
 
 @login_required
+@require_POST
 def legalizacion_rechazar(request, pk):
     user = request.user
     es_aprobador = user.is_superuser or user.groups.filter(name="Aprobadores").exists()
@@ -271,16 +331,26 @@ def legalizacion_rechazar(request, pk):
         messages.error(request, "No tienes permiso para rechazar legalizaciones.")
         return redirect("legalizacion_detail", pk=pk)
 
+    motivo = request.POST.get("motivo", "").strip()
+    if not motivo:
+        messages.error(request, "Debes ingresar el motivo de rechazo.")
+        return redirect("legalizacion_detail", pk=pk)
+
     leg = get_object_or_404(Legalizacion, pk=pk)
+    if leg.estado != Legalizacion.Estado.ENVIADO:
+        messages.error(request, "Solo se pueden rechazar legalizaciones en estado Enviado.")
+        return redirect("legalizacion_detail", pk=pk)
+
     leg.estado = Legalizacion.Estado.RECHAZADO
     leg.aprobado_por = user
+    leg.motivo_aprobador = motivo
     leg.save()
 
     _notificar(
         destinatario=leg.elaboro,
         tipo=Notificacion.Tipo.RECHAZADA,
         titulo=f"Legalización {leg.codigo} rechazada",
-        mensaje=f"Tu legalización fue rechazada por {user.get_full_name() or user.username}.",
+        mensaje=f"Tu legalización fue rechazada por {user.get_full_name() or user.username}. Motivo: {motivo}",
         url=reverse("legalizacion_detail", args=[leg.pk]),
         legalizacion=leg,
     )
@@ -333,20 +403,16 @@ def legalizacion_editar_cabecera(request, pk):
 
     try:
         monto = request.POST.get("monto_aprobado", "").strip()
-        periodo_desde = request.POST.get("periodo_desde", "").strip() or None
-        periodo_hasta = request.POST.get("periodo_hasta", "").strip() or None
 
         if not monto or Decimal(monto) <= 0:
             messages.error(request, "El monto aprobado debe ser mayor a cero.")
             return redirect("legalizacion_detail", pk=pk)
 
         leg.monto_aprobado = Decimal(monto)
-        leg.periodo_desde = periodo_desde
-        leg.periodo_hasta = periodo_hasta
         leg.full_clean()
         leg.save()
         leg.recalcular_saldo(save=True)
-        messages.success(request, "Datos de la legalización actualizados.")
+        messages.success(request, "Monto de la legalización actualizado.")
     except Exception as e:
         messages.error(request, f"Error al guardar: {e}")
 
@@ -437,15 +503,23 @@ def legalizacion_devolver(request, pk):
         messages.error(request, "Solo se pueden devolver legalizaciones en estado Enviado.")
         return redirect("legalizacion_detail", pk=pk)
 
+    comentario = request.POST.get("comentario", "").strip()
+
     leg.estado = Legalizacion.Estado.DEVUELTO
     leg.aprobado_por = user
+    if comentario:
+        leg.motivo_aprobador = comentario
     leg.save()
+
+    msg_notif = "Revisa los gastos rechazados, corrígelos y reenvía la legalización."
+    if comentario:
+        msg_notif = f"{comentario} — Revisa los gastos indicados, corrígelos y reenvía."
 
     _notificar(
         destinatario=leg.elaboro,
         tipo=Notificacion.Tipo.DEVUELTA,
         titulo=f"Legalización {leg.codigo} devuelta para corrección",
-        mensaje=f"Revisa los gastos rechazados, corrígelos y reenvía la legalización.",
+        mensaje=msg_notif,
         url=reverse("legalizacion_detail", args=[leg.pk]),
         legalizacion=leg,
     )

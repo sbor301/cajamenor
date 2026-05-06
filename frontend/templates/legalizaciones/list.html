@@ -21,7 +21,7 @@
   </div>
 
   <!-- Filtros -->
-  <div class="bg-white rounded-2xl border border-slate-200 p-4">
+  <div class="bg-white rounded-2xl border border-slate-100 p-4">
     <form hx-get="{% url 'legalizacion_list' %}"
           hx-target="#tabla-container"
           hx-trigger="change, input delay:400ms"
@@ -30,13 +30,15 @@
       <div class="flex-1">
         <input type="text" name="buscar" value="{{ buscar }}"
                placeholder="Buscar por empleado..."
-               class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm text-slate-900
-                      placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-600 focus:border-transparent"/>
+               class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-900
+                      placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-indigo-300 transition-shadow"
+               style="box-shadow:0 1px 3px rgba(0,0,0,0.05)"/>
       </div>
       <div>
         <select name="estado"
-                class="w-full sm:w-44 px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm text-slate-700
-                       focus:outline-none focus:ring-2 focus:ring-brand-600 focus:border-transparent bg-white">
+                class="w-full sm:w-44 px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-700
+                       focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-indigo-300 bg-white transition-shadow"
+                style="box-shadow:0 1px 3px rgba(0,0,0,0.05)">
           <option value="">Todos los estados</option>
           {% for value, label in estados %}
           <option value="{{ value }}" {% if estado_filtro == value %}selected{% endif %}>{{ label }}</option>
@@ -47,7 +49,7 @@
   </div>
 
   <!-- Tabla -->
-  <div class="bg-white rounded-2xl border border-slate-200 overflow-hidden">
+  <div class="bg-white rounded-2xl border border-slate-100 overflow-hidden">
     <div id="tabla-container">
       {% include "legalizaciones/partials/tabla.html" %}
     </div>

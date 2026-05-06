@@ -371,6 +371,11 @@ class Legalizacion(models.Model):
         verbose_name="Solicitud de caja",
         help_text="Solicitud de caja que originó esta legalización.",
     )
+    motivo_aprobador = models.TextField(
+        blank=True,
+        verbose_name="Observación del aprobador",
+        help_text="Justificación del aprobador al aprobar, rechazar o devolver la legalización.",
+    )
     creado_en = models.DateTimeField(auto_now_add=True)
     actualizado_en = models.DateTimeField(auto_now=True)
 
