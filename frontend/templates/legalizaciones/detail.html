@@ -20,11 +20,11 @@
     <div class="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
       <div class="flex items-start gap-4">
         <div class="w-12 h-12 rounded-2xl bg-indigo-50 flex items-center justify-center text-indigo-600 font-bold text-lg shrink-0">
-          {{ leg.elaboro.first_name|first|upper }}{{ leg.elaboro.last_name|first|upper }}
+          {{ leg.elaboro|nombre_display|iniciales }}
         </div>
         <div>
           <div class="flex items-center gap-2 flex-wrap">
-            <h2 class="text-lg font-bold text-slate-900">{{ leg.elaboro.get_full_name|default:leg.elaboro.username }}</h2>
+            <h2 class="text-lg font-bold text-slate-900">{{ leg.elaboro|nombre_display }}</h2>
             <span class="px-2 py-0.5 rounded-md bg-indigo-100 text-indigo-700 text-xs font-mono font-semibold tracking-wide">
               {{ leg.codigo }}
             </span>
@@ -94,7 +94,7 @@
 
           {% if leg.aprobado_por %}
           <p class="text-xs text-slate-400 mt-1">
-            {{ leg.get_estado_display }} por {{ leg.aprobado_por.get_full_name|default:leg.aprobado_por.username }}
+            {{ leg.get_estado_display }} por {{ leg.aprobado_por|nombre_display }}
           </p>
           {% endif %}
         </div>

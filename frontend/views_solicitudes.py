@@ -382,7 +382,9 @@ def _solicitud_create_post(request, perfil, accion):
 def solicitud_detail(request, pk):
     sol = get_object_or_404(
         SolicitudCaja.objects.select_related(
-            "solicitante", "aprobador_area", "aprobador_corp"
+            "solicitante", "solicitante__perfil",
+            "aprobador_area", "aprobador_area__perfil",
+            "aprobador_corp", "aprobador_corp__perfil",
         ).prefetch_related("items__centro_costo"),
         pk=pk,
     )

@@ -154,7 +154,7 @@
           {% endif %}
         </div>
         <p class="text-sm font-medium text-slate-900">
-          {% if sol.aprobador_area %}{{ sol.aprobador_area.get_full_name|default:sol.aprobador_area.username }}{% else %}—{% endif %}
+          {% if sol.aprobador_area %}{{ sol.aprobador_area|nombre_display }}{% else %}—{% endif %}
         </p>
         <p class="text-xs text-slate-400">{% if sol.firma_area_fecha %}{{ sol.firma_area_fecha|date:"d M Y" }}{% else %}—{% endif %}</p>
       </div>
@@ -176,7 +176,7 @@
           {% endif %}
         </div>
         <p class="text-sm font-medium text-slate-900">
-          {% if sol.aprobador_corp %}{{ sol.aprobador_corp.get_full_name|default:sol.aprobador_corp.username }}{% else %}—{% endif %}
+          {% if sol.aprobador_corp %}{{ sol.aprobador_corp|nombre_display }}{% else %}—{% endif %}
         </p>
         <p class="text-xs text-slate-400">{% if sol.firma_corp_fecha %}{{ sol.firma_corp_fecha|date:"d M Y" }}{% else %}—{% endif %}</p>
       </div>

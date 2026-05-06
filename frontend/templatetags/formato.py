@@ -5,6 +5,46 @@ register = template.Library()
 
 
 @register.filter
+def nombre_display(user):
+    """
+    Devuelve el nombre visible de un usuario del sistema.
+
+    Prioridad:
+      1. Perfil.nombre_completo  (campo propio — siempre se llena en el perfil)
+      2. User.get_full_name()    (first_name + last_name de Django auth)
+      3. User.username           (fallback final)
+
+    Uso en plantillas:  {{ sol.aprobador_area|nombre_display }}
+    """
+    if not user:
+        return ""
+    try:
+        nombre = user.perfil.nombre_completo
+        if nombre and nombre.strip():
+            return nombre.strip()
+    except Exception:
+        pass
+    nombre_django = user.get_full_name()
+    return nombre_django if nombre_django else (user.username or "")
+
+
+@register.filter
+def iniciales(value):
+    """
+    Devuelve las iniciales (máx. 2 caracteres mayúsculas) de un nombre completo.
+    Ej: "Sebastian Ojeda" → "SO", "analistatic" → "A"
+
+    Uso:  {{ sol.aprobador_area|nombre_display|iniciales }}
+    """
+    partes = str(value).split()
+    if not partes:
+        return "?"
+    if len(partes) == 1:
+        return partes[0][:1].upper()
+    return (partes[0][:1] + partes[-1][:1]).upper()
+
+
+@register.filter
 def cop(value):
     """
     Formatea un número en formato colombiano: separador de miles con punto,

@@ -22,7 +22,7 @@
             </div>
             <div>
               <div class="flex items-center gap-2">
-                <p class="font-medium text-slate-800">{{ leg.elaboro.get_full_name|default:leg.elaboro.username }}</p>
+                <p class="font-medium text-slate-800">{{ leg.elaboro|nombre_display }}</p>
                 <span class="px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-600 text-xs font-mono font-semibold">
                   {{ leg.codigo }}
                 </span>
