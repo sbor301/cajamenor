@@ -45,6 +45,15 @@ def iniciales(value):
 
 
 @register.filter
+def abs_value(value):
+    """Devuelve el valor absoluto de un número. Útil para mostrar saldos negativos."""
+    try:
+        return abs(Decimal(str(value)))
+    except (InvalidOperation, TypeError, ValueError):
+        return value
+
+
+@register.filter
 def cop(value):
     """
     Formatea un número en formato colombiano: separador de miles con punto,

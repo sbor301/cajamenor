@@ -6,7 +6,7 @@ from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
 from django.db import transaction
-from django.db.models import Count, Q, Sum
+from django.db.models import Case, Count, DecimalField, Q, Sum, Value, When
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -78,6 +78,22 @@ def dashboard(request):
         total=Count("numero"),
         monto_total=Sum("monto_aprobado"),
         saldo_total=Sum("saldo"),
+        # saldo > 0 → empleado gastó menos → empresa recupera dinero
+        saldo_empresa=Sum(
+            Case(
+                When(saldo__gt=0, then="saldo"),
+                default=Value(Decimal("0")),
+                output_field=DecimalField(),
+            )
+        ),
+        # saldo < 0 → empleado gastó más → empresa debe al empleado (guardamos como positivo)
+        saldo_empleado=Sum(
+            Case(
+                When(saldo__lt=0, then="saldo"),
+                default=Value(Decimal("0")),
+                output_field=DecimalField(),
+            )
+        ),
         borradores=Count("numero", filter=Q(estado=Legalizacion.Estado.BORRADOR)),
         enviadas=Count("numero", filter=Q(estado=Legalizacion.Estado.ENVIADO)),
         aprobadas=Count("numero", filter=Q(estado=Legalizacion.Estado.APROBADO)),
@@ -255,9 +271,11 @@ def legalizacion_detail(request, pk):
         return redirect("legalizacion_list")
 
     gastos = leg.gastos.all()
-    total_gastos = (
-        gastos.filter(rechazado=False).aggregate(t=Sum("valor"))["t"] or Decimal("0")
-    )
+    gastos_activos = gastos.filter(rechazado=False)
+    total_gastos = gastos_activos.aggregate(t=Sum("valor"))["t"] or Decimal("0")
+
+    # EXISTS es más eficiente que count() > 0: detiene el scan al primer resultado.
+    tiene_gastos = gastos_activos.exists()
 
     # ¿Puede agregar/editar gastos?
     # - Elaborador (empleado) en estado BORRADOR o DEVUELTO
@@ -271,6 +289,7 @@ def legalizacion_detail(request, pk):
         "leg": leg,
         "gastos": gastos,
         "total_gastos": total_gastos,
+        "tiene_gastos": tiene_gastos,
         "es_aprobador": es_aprobador,
         "puede_editar": leg.estado in (Legalizacion.Estado.BORRADOR, Legalizacion.Estado.ENVIADO),
         "puede_editar_gastos": puede_editar_gastos,
@@ -301,6 +320,7 @@ def legalizacion_aprobar(request, pk):
         leg.estado = Legalizacion.Estado.APROBADO
         leg.aprobado_por = user
         leg.motivo_aprobador = justificacion
+        leg.fecha_aprobacion = date.today()
         leg.save()
 
         # Si esta legalización proviene de una solicitud, marcarla como LEGALIZADA
@@ -394,8 +414,14 @@ def legalizacion_set_consignacion(request, pk):
 @login_required
 @require_POST
 def legalizacion_editar_cabecera(request, pk):
-    """Empleado edita monto y período de caja mientras la legalización está en BORRADOR o DEVUELTO."""
-    leg = get_object_or_404(Legalizacion, pk=pk, elaboro=request.user)
+    """Solo aprobadores y administradores pueden editar el monto aprobado de una legalización."""
+    user = request.user
+    es_aprobador = user.is_superuser or user.groups.filter(name="Aprobadores").exists()
+    if not es_aprobador:
+        messages.error(request, "Solo los aprobadores pueden modificar el monto de una legalización.")
+        return redirect("legalizacion_detail", pk=pk)
+
+    leg = get_object_or_404(Legalizacion, pk=pk)
 
     if leg.estado not in (Legalizacion.Estado.BORRADOR, Legalizacion.Estado.DEVUELTO):
         messages.error(request, "Solo se pueden editar los datos en estado Borrador o Devuelto.")
@@ -469,6 +495,15 @@ def ocr_factura(request):
 def legalizacion_enviar(request, pk):
     leg = get_object_or_404(Legalizacion, pk=pk, elaboro=request.user)
     if leg.estado in (Legalizacion.Estado.BORRADOR, Legalizacion.Estado.DEVUELTO):
+        # Regla de negocio: una legalización sin gastos no tiene sentido.
+        # EXISTS evita un COUNT completo; se detiene al primer resultado.
+        if not leg.gastos.filter(rechazado=False).exists():
+            messages.error(
+                request,
+                "Debes agregar al menos un gasto antes de enviar la legalización.",
+            )
+            return redirect("legalizacion_detail", pk=pk)
+
         leg.estado = Legalizacion.Estado.ENVIADO
         leg.save()
 
@@ -764,6 +799,48 @@ def notificaciones_marcar_todas(request):
     ).update(leida=True)
     if request.headers.get("X-Requested-With") == "XMLHttpRequest":
         return JsonResponse({"ok": True})
+    return redirect("notificaciones_list")
+
+
+@login_required
+def notificaciones_count(request):
+    """
+    Endpoint ultraligero para polling: solo devuelve el conteo de no leídas.
+    Una única query COUNT(*) — evita serializar notificaciones completas cada 15 s.
+    """
+    no_leidas = (
+        Notificacion.objects
+        .filter(destinatario=request.user, leida=False)
+        .count()
+    )
+    return JsonResponse({"no_leidas": no_leidas})
+
+
+@login_required
+@require_POST
+def notificacion_eliminar(request, pk):
+    """Elimina una notificación del usuario. Devuelve JSON si es petición AJAX."""
+    n = get_object_or_404(Notificacion, pk=pk, destinatario=request.user)
+    era_no_leida = not n.leida
+    n.delete()
+    if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+        return JsonResponse({"ok": True, "era_no_leida": era_no_leida})
+    return redirect("notificaciones_list")
+
+
+@login_required
+@require_POST
+def notificaciones_eliminar_leidas(request):
+    """Elimina en un solo DELETE todas las notificaciones leídas del usuario.
+    Bulk delete — evita N queries individuales para listas grandes.
+    """
+    eliminadas, _ = (
+        Notificacion.objects
+        .filter(destinatario=request.user, leida=True)
+        .delete()
+    )
+    if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+        return JsonResponse({"ok": True, "eliminadas": eliminadas})
     return redirect("notificaciones_list")
 
 

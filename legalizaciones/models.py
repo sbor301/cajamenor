@@ -320,6 +320,12 @@ class Legalizacion(models.Model):
         verbose_name="Período de caja — hasta",
         help_text="Fecha de cierre del período que cubre esta caja menor.",
     )
+    fecha_aprobacion = models.DateField(
+        null=True,
+        blank=True,
+        verbose_name="Fecha de legalización",
+        help_text="Fecha en que el aprobador aprobó la legalización.",
+    )
     fecha_cierre = models.DateField(
         null=True,
         blank=True,

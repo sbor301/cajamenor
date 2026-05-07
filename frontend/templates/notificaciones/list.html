@@ -5,144 +5,171 @@
 {% block content %}
 <div class="max-w-3xl space-y-4">
 
-  <!-- Encabezado + acción global -->
-  <div class="flex items-center justify-between">
+  <!-- Encabezado + acciones globales -->
+  <div class="flex items-center justify-between gap-4">
     <p class="text-sm text-slate-400">
       {{ notificaciones|length }} notificación{{ notificaciones|length|pluralize:"es" }} en total
     </p>
     {% if notificaciones %}
-    <form method="post" action="{% url 'notificaciones_marcar_todas' %}">
-      {% csrf_token %}
-      <button type="submit"
-              class="text-xs font-medium text-indigo-600 hover:text-indigo-700 transition-colors">
-        Marcar todas como leídas
-      </button>
-    </form>
+    <div class="flex items-center gap-3">
+      {% with leidas=notificaciones|length %}
+      <form method="post" action="{% url 'notificaciones_eliminar_leidas' %}">
+        {% csrf_token %}
+        <button type="submit"
+                class="inline-flex items-center gap-1.5 text-xs font-medium text-slate-400
+                       hover:text-red-500 transition-colors">
+          <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round"
+                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+          </svg>
+          Eliminar leídas
+        </button>
+      </form>
+      {% endwith %}
+      <form method="post" action="{% url 'notificaciones_marcar_todas' %}">
+        {% csrf_token %}
+        <button type="submit"
+                class="text-xs font-medium text-brand-600 hover:text-brand-700 transition-colors">
+          Marcar todas como leídas
+        </button>
+      </form>
+    </div>
     {% endif %}
   </div>
 
   {% if notificaciones %}
   <div class="bg-white rounded-2xl border border-slate-100 divide-y divide-slate-50 overflow-hidden">
     {% for n in notificaciones %}
-    <a href="{% url 'notificacion_leer' n.pk %}"
-       class="flex items-start gap-4 px-5 py-4 hover:bg-slate-50 transition-colors
-              {% if not n.leida %}bg-indigo-50/30{% endif %}">
+    <div class="group relative flex items-stretch transition-colors
+                {% if not n.leida %}bg-indigo-50/30 hover:bg-indigo-50/50{% else %}hover:bg-slate-50{% endif %}">
 
-      <!-- Icono -->
-      <div class="w-9 h-9 rounded-full flex items-center justify-center shrink-0 mt-0.5
-        {% if n.tipo == 'ENVIADA' or n.tipo == 'SOL_ENVIADA_AREA' %}
-          bg-blue-50 text-blue-500
-        {% elif n.tipo == 'APROBADA' or n.tipo == 'SOL_APROBADA_AREA' %}
-          bg-emerald-50 text-emerald-500
-        {% elif n.tipo == 'SOL_APROBADA_CORP' %}
-          bg-teal-50 text-teal-600
-        {% elif n.tipo == 'SOL_DESEMBOLSADA' %}
-          bg-violet-50 text-violet-500
-        {% elif n.tipo == 'RECHAZADA' or n.tipo == 'GASTO_RECHAZADO' or n.tipo == 'SOL_RECHAZADA' %}
-          bg-red-50 text-red-500
-        {% elif n.tipo == 'DEVUELTA' %}
-          bg-orange-50 text-orange-500
-        {% elif n.tipo == 'ALERTA_CIERRE' %}
-          bg-yellow-50 text-yellow-600
-        {% else %}
-          bg-slate-50 text-slate-400
-        {% endif %}">
+      <!-- Enlace principal -->
+      <a href="{% url 'notificacion_leer' n.pk %}"
+         class="flex items-start gap-4 px-5 py-4 flex-1 min-w-0 pr-12">
 
-        {% if n.tipo == 'ENVIADA' %}
-          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
-          </svg>
+        <!-- Icono -->
+        <div class="w-9 h-9 rounded-full flex items-center justify-center shrink-0 mt-0.5
+          {% if n.tipo == 'ENVIADA' or n.tipo == 'SOL_ENVIADA_AREA' %}
+            bg-blue-50 text-blue-500
+          {% elif n.tipo == 'APROBADA' or n.tipo == 'SOL_APROBADA_AREA' %}
+            bg-emerald-50 text-emerald-500
+          {% elif n.tipo == 'SOL_APROBADA_CORP' %}
+            bg-teal-50 text-teal-600
+          {% elif n.tipo == 'SOL_DESEMBOLSADA' %}
+            bg-violet-50 text-violet-500
+          {% elif n.tipo == 'RECHAZADA' or n.tipo == 'GASTO_RECHAZADO' or n.tipo == 'SOL_RECHAZADA' %}
+            bg-red-50 text-red-500
+          {% elif n.tipo == 'DEVUELTA' %}
+            bg-orange-50 text-orange-500
+          {% elif n.tipo == 'ALERTA_CIERRE' %}
+            bg-yellow-50 text-yellow-600
+          {% else %}
+            bg-slate-50 text-slate-400
+          {% endif %}">
 
-        {% elif n.tipo == 'APROBADA' %}
-          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-          </svg>
-
-        {% elif n.tipo == 'RECHAZADA' %}
-          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-          </svg>
-
-        {% elif n.tipo == 'GASTO_RECHAZADO' %}
-          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
-          </svg>
-
-        {% elif n.tipo == 'DEVUELTA' %}
-          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/>
-          </svg>
-
-        {% elif n.tipo == 'ALERTA_CIERRE' %}
-          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
-          </svg>
-
-        {# ── Solicitudes de caja ──────────────────────────────────────── #}
-        {% elif n.tipo == 'SOL_ENVIADA_AREA' %}
-          <!-- Clipboard con check — solicitud enviada a gerencia -->
-          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                  d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/>
-          </svg>
-
-        {% elif n.tipo == 'SOL_APROBADA_AREA' %}
-          <!-- Badge de verificado — aprobada por área -->
-          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                  d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"/>
-          </svg>
-
-        {% elif n.tipo == 'SOL_APROBADA_CORP' %}
-          <!-- Edificio corporativo — aprobada corporativa -->
-          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                  d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-2 10v-5a1 1 0 00-1-1h-2a1 1 0 00-1 1v5m4 0H9"/>
-          </svg>
-
-        {% elif n.tipo == 'SOL_DESEMBOLSADA' %}
-          <!-- Billetera / efectivo — caja desembolsada -->
-          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                  d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/>
-          </svg>
-
-        {% elif n.tipo == 'SOL_RECHAZADA' %}
-          <!-- Prohibido — solicitud rechazada -->
-          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                  d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/>
-          </svg>
-
-        {% else %}
-          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-          </svg>
-        {% endif %}
-      </div>
-
-      <!-- Contenido -->
-      <div class="flex-1 min-w-0">
-        <div class="flex items-start justify-between gap-2">
-          <p class="text-sm font-semibold text-slate-800 leading-snug">{{ n.titulo }}</p>
-          {% if not n.leida %}
-          <span class="w-2 h-2 rounded-full bg-indigo-500 shrink-0 mt-1.5"></span>
+          {% if n.tipo == 'ENVIADA' %}
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
+            </svg>
+          {% elif n.tipo == 'APROBADA' %}
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+          {% elif n.tipo == 'RECHAZADA' %}
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+          {% elif n.tipo == 'GASTO_RECHAZADO' %}
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+            </svg>
+          {% elif n.tipo == 'DEVUELTA' %}
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/>
+            </svg>
+          {% elif n.tipo == 'ALERTA_CIERRE' %}
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+          {% elif n.tipo == 'SOL_ENVIADA_AREA' %}
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/>
+            </svg>
+          {% elif n.tipo == 'SOL_APROBADA_AREA' %}
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"/>
+            </svg>
+          {% elif n.tipo == 'SOL_APROBADA_CORP' %}
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-2 10v-5a1 1 0 00-1-1h-2a1 1 0 00-1 1v5m4 0H9"/>
+            </svg>
+          {% elif n.tipo == 'SOL_DESEMBOLSADA' %}
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/>
+            </svg>
+          {% elif n.tipo == 'SOL_RECHAZADA' %}
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/>
+            </svg>
+          {% else %}
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
           {% endif %}
         </div>
-        {% if n.mensaje %}
-        <p class="text-xs text-slate-500 mt-0.5 leading-relaxed">{{ n.mensaje }}</p>
-        {% endif %}
-        <!-- Etiqueta de categoría -->
-        <div class="flex items-center gap-2 mt-1.5">
-          <p class="text-[11px] text-slate-400">{{ n.creado_en|timesince }} atrás</p>
-          {% if n.tipo|slice:":4" == "SOL_" %}
-          <span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-slate-100 text-slate-500">
-            Solicitud
-          </span>
+
+        <!-- Contenido -->
+        <div class="flex-1 min-w-0">
+          <div class="flex items-start justify-between gap-2">
+            <p class="text-sm font-semibold text-slate-800 leading-snug">{{ n.titulo }}</p>
+            {% if not n.leida %}
+            <span class="w-2 h-2 rounded-full bg-indigo-500 shrink-0 mt-1.5"></span>
+            {% endif %}
+          </div>
+          {% if n.mensaje %}
+          <p class="text-xs text-slate-500 mt-0.5 leading-relaxed">{{ n.mensaje }}</p>
           {% endif %}
+          <div class="flex items-center gap-2 mt-1.5">
+            <p class="text-[11px] text-slate-400">{{ n.creado_en|timesince }} atrás</p>
+            {% if n.tipo|slice:":4" == "SOL_" %}
+            <span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-slate-100 text-slate-500">
+              Solicitud
+            </span>
+            {% endif %}
+            {% if n.leida %}
+            <span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-slate-100 text-slate-400">
+              <svg class="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+              </svg>
+              Leída
+            </span>
+            {% endif %}
+          </div>
         </div>
-      </div>
-    </a>
+      </a>
+
+      <!-- Botón eliminar — visible al hacer hover -->
+      <form method="post" action="{% url 'notificacion_eliminar' n.pk %}"
+            class="absolute right-3 top-1/2 -translate-y-1/2
+                   opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+        {% csrf_token %}
+        <button type="submit"
+                title="Eliminar notificación"
+                class="w-8 h-8 flex items-center justify-center rounded-lg
+                       text-slate-300 hover:text-red-500 hover:bg-red-50 transition-colors">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round"
+                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+          </svg>
+        </button>
+      </form>
+
+    </div>
     {% endfor %}
   </div>
 

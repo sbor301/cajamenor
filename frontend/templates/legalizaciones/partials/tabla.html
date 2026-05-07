@@ -5,7 +5,7 @@
     <thead>
       <tr class="border-b border-slate-100 bg-slate-50/60">
         <th class="text-left px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Elaboró</th>
-        <th class="text-left px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Fecha</th>
+        <th class="text-left px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Fecha creación / legalización</th>
         <th class="text-right px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Monto</th>
         <th class="text-right px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Saldo</th>
         <th class="text-center px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Estado</th>
@@ -31,7 +31,18 @@
             </div>
           </div>
         </td>
-        <td class="px-6 py-4 text-slate-600">{{ leg.fecha_solicitud|date:"d/m/Y" }}</td>
+        <td class="px-6 py-4">
+          <div>
+            <span class="text-slate-600">{{ leg.fecha_solicitud|date:"d/m/Y" }}</span>
+            <p class="text-[11px] text-slate-400 mt-0.5">Creación</p>
+          </div>
+          {% if leg.estado == 'APROBADO' and leg.fecha_aprobacion %}
+          <div class="mt-1.5">
+            <span class="text-emerald-700 font-medium">{{ leg.fecha_aprobacion|date:"d/m/Y" }}</span>
+            <p class="text-[11px] text-emerald-500 mt-0.5">Legalizada</p>
+          </div>
+          {% endif %}
+        </td>
         <td class="px-6 py-4 text-right font-medium text-slate-800">${{ leg.monto_aprobado|cop }}</td>
         <td class="px-6 py-4 text-right font-semibold {% if leg.saldo < 0 %}text-red-600{% else %}text-emerald-600{% endif %}">
           ${{ leg.saldo|cop }}

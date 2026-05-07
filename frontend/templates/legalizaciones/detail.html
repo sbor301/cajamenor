@@ -36,7 +36,20 @@
               {{ leg.codigo }}
             </span>
           </div>
-          <p class="text-sm text-slate-400 mt-0.5">Solicitud: {{ leg.fecha_solicitud|date:"d \d\e F \d\e Y" }}</p>
+          <div class="flex flex-wrap items-center gap-x-4 gap-y-0.5 mt-0.5">
+            <p class="text-sm text-slate-400">
+              Creada el {{ leg.fecha_solicitud|date:"d \d\e F \d\e Y" }}
+            </p>
+            {% if leg.estado == 'APROBADO' and leg.fecha_aprobacion %}
+            <span class="text-slate-300 hidden sm:inline">·</span>
+            <p class="text-sm text-emerald-600 font-medium inline-flex items-center gap-1">
+              <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+              </svg>
+              Legalizada el {{ leg.fecha_aprobacion|date:"d \d\e F \d\e Y" }}
+            </p>
+            {% endif %}
+          </div>
 
           {% if es_aprobador %}
           <!-- Aprobador: fecha de consignación -->
@@ -111,8 +124,8 @@
     </div>
     {% endif %}
 
-    <!-- Edición inline de monto (elaborador en BORRADOR o DEVUELTO) -->
-    {% if leg.elaboro == request.user %}
+    <!-- Edición inline de monto (solo aprobadores / administradores) -->
+    {% if es_aprobador %}
     {% if leg.estado == 'BORRADOR' or leg.estado == 'DEVUELTO' %}
     <div x-data="{ editando: false }" class="mt-5 pt-5 border-t border-slate-100">
       <div class="flex items-center justify-between mb-3">
@@ -357,17 +370,33 @@
 
   <!-- ── Acción enviar (BORRADOR) ────────────────────────────────────────── -->
   {% if leg.estado == 'BORRADOR' and leg.elaboro == request.user %}
-  <div class="bg-blue-50 border border-blue-200 rounded-2xl p-5 flex flex-col sm:flex-row items-center justify-between gap-4">
+  <div class="{% if tiene_gastos %}bg-blue-50 border-blue-200{% else %}bg-slate-50 border-slate-200{% endif %} border rounded-2xl p-5 flex flex-col sm:flex-row items-center justify-between gap-4">
     <div class="flex items-center gap-3">
+      {% if tiene_gastos %}
       <svg class="w-5 h-5 text-blue-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
               d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
       </svg>
+      {% else %}
+      <svg class="w-5 h-5 text-slate-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+      </svg>
+      {% endif %}
       <div>
-        <p class="text-sm font-semibold text-blue-800">Borrador — pendiente de envío</p>
-        <p class="text-xs text-blue-600 mt-0.5">Agrega todos los gastos antes de enviar. Una vez enviada, no podrás modificarla.</p>
+        <p class="text-sm font-semibold {% if tiene_gastos %}text-blue-800{% else %}text-slate-600{% endif %}">
+          Borrador — pendiente de envío
+        </p>
+        <p class="text-xs mt-0.5 {% if tiene_gastos %}text-blue-600{% else %}text-slate-500{% endif %}">
+          {% if tiene_gastos %}
+            Agrega todos los gastos antes de enviar. Una vez enviada, no podrás modificarla.
+          {% else %}
+            Debes agregar al menos un gasto para poder enviar la legalización.
+          {% endif %}
+        </p>
       </div>
     </div>
+    {% if tiene_gastos %}
     <form method="post" action="{% url 'legalizacion_enviar' leg.pk %}">
       {% csrf_token %}
       <button type="submit"
@@ -375,6 +404,7 @@
         Enviar para Aprobación
       </button>
     </form>
+    {% endif %}
   </div>
   {% endif %}
 
@@ -389,13 +419,16 @@
         </svg>
         <div>
           <p class="text-sm font-semibold text-orange-800">Legalización devuelta para corrección</p>
-          {% with gastos_rechazados=gastos|length %}
           <p class="text-xs text-orange-600 mt-0.5">
-            El aprobador rechazó uno o más gastos. Edítalos en la tabla y luego reenvía.
+            {% if tiene_gastos %}
+              Corrige o edita los gastos en la tabla y luego reenvía para aprobación.
+            {% else %}
+              Todos los gastos fueron rechazados. Agrega al menos uno nuevo para poder reenviar.
+            {% endif %}
           </p>
-          {% endwith %}
         </div>
       </div>
+      {% if tiene_gastos %}
       <form method="post" action="{% url 'legalizacion_enviar' leg.pk %}" class="shrink-0">
         {% csrf_token %}
         <button type="submit"
@@ -403,6 +436,7 @@
           Reenviar para Aprobación
         </button>
       </form>
+      {% endif %}
     </div>
   </div>
   {% endif %}
@@ -413,7 +447,7 @@
       <h3 class="text-sm font-semibold text-slate-800">Gastos Asociados</h3>
       <div class="flex items-center gap-3">
         <span class="text-xs text-slate-400">{{ gastos.count }} gasto{{ gastos.count|pluralize }}</span>
-        {% if puede_editar_gastos %}
+        {% if puede_editar_gastos and tiene_gastos %}
         <a href="{% url 'gasto_crear' leg.pk %}"
            class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700
                   text-white text-xs font-semibold rounded-lg transition-colors">

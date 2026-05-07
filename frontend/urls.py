@@ -24,8 +24,11 @@ urlpatterns = [
     # Notificaciones
     path("notificaciones/", views.notificaciones_list, name="notificaciones_list"),
     path("notificaciones/api/", views.notificaciones_api, name="notificaciones_api"),
+    path("notificaciones/count/", views.notificaciones_count, name="notificaciones_count"),
     path("notificaciones/marcar-todas/", views.notificaciones_marcar_todas, name="notificaciones_marcar_todas"),
+    path("notificaciones/eliminar-leidas/", views.notificaciones_eliminar_leidas, name="notificaciones_eliminar_leidas"),
     path("notificaciones/<int:pk>/leer/", views.notificacion_leer, name="notificacion_leer"),
+    path("notificaciones/<int:pk>/eliminar/", views.notificacion_eliminar, name="notificacion_eliminar"),
 
     # Solicitudes de caja
     path("solicitudes/",                          vs.solicitud_list,         name="solicitud_list"),

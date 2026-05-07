@@ -183,6 +183,13 @@
       to   { opacity:1; transform: translateY(0); }
     }
 
+    /* ── Bell / badge animations ── */
+    @keyframes badgePulse {
+      0%,100% { transform: scale(1);    box-shadow: 0 0 0 0   rgba(239,68,68,0.6); }
+      50%     { transform: scale(1.3);  box-shadow: 0 0 0 5px rgba(239,68,68,0);   }
+    }
+    .badge-pulse { animation: badgePulse 1.5s ease-in-out infinite; }
+
     /* ── Notification bell dropdown ── */
     .notif-dropdown {
       background: #fff;
@@ -252,7 +259,11 @@
         open: false,
         items: [],
         noLeidas: {{ notif_no_leidas }},
+        ultimoConteo: {{ notif_no_leidas }},
         cargado: false,
+        pendingChime: false,
+        permisoBrowser: (typeof Notification !== 'undefined') ? Notification.permission : 'denied',
+
         iconPaths: {
           ENVIADA:           'M12 19l9 2-9-18-9 18 9-2zm0 0v-8',
           APROBADA:          'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z',
@@ -266,15 +277,23 @@
           SOL_DESEMBOLSADA:  'M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z',
           SOL_RECHAZADA:     'M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636',
         },
+
         async abrir() {
+          if (!this.open) {
+            /* Abrir = reconocer notificaciones → actualizar storage */
+            this.pendingChime = false;
+            this.storageSet(this.noLeidas);
+          }
           this.open = !this.open;
           if (this.open && !this.cargado) await this.cargar();
         },
+
         async cargar() {
           const r = await fetch('{% url "notificaciones_api" %}');
           const d = await r.json();
           this.items = d.items;
           this.noLeidas = d.no_leidas;
+          this.ultimoConteo = d.no_leidas;
           this.cargado = true;
         },
         async marcarTodas() {
@@ -284,7 +303,101 @@
           });
           this.items.forEach(i => i.leida = true);
           this.noLeidas = 0;
+          this.ultimoConteo = 0;
+          this.storageSet(0);
         },
+
+        async eliminarNotif(id) {
+          try {
+            await fetch(`/notificaciones/${id}/eliminar/`, {
+              method: 'POST',
+              headers: { 'X-CSRFToken': '{{ csrf_token }}', 'X-Requested-With': 'XMLHttpRequest' }
+            });
+            const item = this.items.find(i => i.id === id);
+            this.items = this.items.filter(i => i.id !== id);
+            if (item && !item.leida) {
+              this.noLeidas  = Math.max(0, this.noLeidas - 1);
+              this.ultimoConteo = this.noLeidas;
+              this.storageSet(this.noLeidas);
+            }
+          } catch(e) {}
+        },
+
+        async eliminarLeidas() {
+          try {
+            await fetch('{% url "notificaciones_eliminar_leidas" %}', {
+              method: 'POST',
+              headers: { 'X-CSRFToken': '{{ csrf_token }}', 'X-Requested-With': 'XMLHttpRequest' }
+            });
+            this.items = this.items.filter(i => !i.leida);
+            /* noLeidas no cambia: las leídas no contaban en el badge */
+          } catch(e) {}
+        },
+
+        /* ── Browser Notification ── */
+        mostrarBrowserNotif(titulo, cuerpo) {
+          if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
+          const n = new Notification('Caja Menor — ' + titulo, {
+            body: cuerpo,
+            icon: 'data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 32 32%22><rect width=%2232%22 height=%2232%22 rx=%228%22 fill=%22%236366f1%22/><path d=%22M9 16l2 2 4-4m-3-5h8m-8 4h8%22 stroke=%22white%22 stroke-width=%222%22 fill=%22none%22 stroke-linecap=%22round%22/></svg>',
+            tag: 'cajamenor-notif',
+          });
+          n.onclick = () => { window.focus(); n.close(); };
+          setTimeout(() => n.close(), 8000);
+        },
+
+        async solicitarPermiso() {
+          if (typeof Notification === 'undefined') return;
+          const p = await Notification.requestPermission();
+          this.permisoBrowser = p;
+        },
+
+        /* ── Polling cada 15 s — usa endpoint ligero (solo COUNT) ── */
+        async poll() {
+          try {
+            const r = await fetch('{% url "notificaciones_count" %}');
+            const d = await r.json();
+            const nuevas = d.no_leidas;
+            if (nuevas > this.ultimoConteo) {
+              this.mostrarBrowserNotif(
+                'Nueva notificación',
+                'Tienes ' + (nuevas - this.ultimoConteo) + ' notificación(es) nueva(s)'
+              );
+              this.cargado = false;
+              /* NO actualizar storage aquí — usuario aún no ha reconocido */
+            } else {
+              this.storageSet(nuevas);
+            }
+            this.noLeidas = nuevas;
+            this.ultimoConteo = nuevas;
+          } catch(e) {}
+        },
+
+        /* ── Persistencia cross-page (localStorage → cookie fallback) ── */
+        storageGet() {
+          try { const v = localStorage.getItem('cajamenor_notif'); if (v !== null) return parseInt(v); } catch(e) {}
+          try { const m = document.cookie.match(/cajamenor_notif=(\d+)/); if (m) return parseInt(m[1]); } catch(e) {}
+          return -1;
+        },
+        storageSet(n) {
+          try { localStorage.setItem('cajamenor_notif', n); } catch(e) {}
+          try { document.cookie = 'cajamenor_notif=' + n + ';path=/;max-age=86400;SameSite=Lax'; } catch(e) {}
+        },
+
+        /* ── Inicialización ── */
+        iniciar() {
+          const guardado = this.storageGet();
+          if (guardado < 0) {
+            /* Primera visita — solo inicializar, sin chime */
+            this.storageSet(this.noLeidas);
+          } else if (this.noLeidas > guardado) {
+            /* Hay notificaciones nuevas desde la última vez que abrió la campana */
+            this.pendingChime = true;
+          }
+          /* NO llamar storageSet aquí — solo se actualiza al abrir la campana */
+          setInterval(() => this.poll(), 15000);
+        },
+
         colorClasses(tipo) {
           return {
             ENVIADA:           'bg-blue-50 text-blue-500',
@@ -300,7 +413,9 @@
             SOL_RECHAZADA:     'bg-red-50 text-red-500',
           }[tipo] || 'bg-slate-50 text-slate-400';
         }
-      }" class="relative" @keydown.escape.window="open=false">
+      }"
+      x-init="iniciar()"
+      class="relative" @keydown.escape.window="open=false">
 
         <button @click="abrir()" aria-label="Notificaciones"
                 class="relative w-9 h-9 flex items-center justify-center rounded-lg transition-colors"
@@ -311,6 +426,7 @@
           </svg>
           <span x-show="noLeidas > 0" x-cloak
                 x-text="noLeidas > 9 ? '9+' : noLeidas"
+                :class="pendingChime ? 'badge-pulse' : ''"
                 class="absolute -top-0.5 -right-0.5 min-w-[1.1rem] h-[1.1rem] rounded-full
                        bg-red-500 text-white text-[9px] font-bold
                        flex items-center justify-center px-0.5 leading-none pointer-events-none">
@@ -326,6 +442,27 @@
              x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0 scale-95"
              class="notif-dropdown absolute right-0 top-full mt-2 w-80 sm:w-96 z-50 overflow-hidden origin-top-right">
 
+          <!-- Banner permiso navegador -->
+          <div x-show="permisoBrowser === 'default'" x-cloak
+               class="flex items-center justify-between gap-2 px-4 py-2.5 bg-indigo-50 border-b border-indigo-100">
+            <div class="flex items-center gap-2 min-w-0">
+              <svg class="w-4 h-4 text-indigo-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+              </svg>
+              <span class="text-xs text-indigo-700 font-medium truncate">Activa notificaciones del navegador</span>
+            </div>
+            <button @click="solicitarPermiso()"
+                    class="shrink-0 px-2.5 py-1 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-lg transition-colors">
+              Activar
+            </button>
+          </div>
+          <!-- Banner permiso denegado -->
+          <div x-show="permisoBrowser === 'denied'" x-cloak
+               class="px-4 py-2 bg-slate-50 border-b border-slate-100">
+            <p class="text-[11px] text-slate-400">Notificaciones del navegador bloqueadas. Actívalas desde la configuración del sitio en tu navegador.</p>
+          </div>
+
+          <!-- Header del dropdown -->
           <div class="flex items-center justify-between px-4 py-3 border-b border-slate-100">
             <div class="flex items-center gap-2">
               <span class="text-sm font-semibold text-slate-800">Notificaciones</span>
@@ -333,10 +470,16 @@
                     class="px-1.5 py-0.5 rounded-full bg-red-100 text-red-600 text-xs font-bold leading-none">
               </span>
             </div>
-            <button @click="marcarTodas()" x-show="noLeidas > 0"
-                    class="text-xs text-brand-600 hover:text-brand-700 font-medium transition-colors">
-              Marcar todas
-            </button>
+            <div class="flex items-center gap-3">
+              <button @click="marcarTodas()" x-show="noLeidas > 0"
+                      class="text-xs text-brand-600 hover:text-brand-700 font-medium transition-colors">
+                Marcar leídas
+              </button>
+              <button @click="eliminarLeidas()" x-show="items.some(i => i.leida)"
+                      class="text-xs text-slate-400 hover:text-red-500 font-medium transition-colors">
+                Eliminar leídas
+              </button>
+            </div>
           </div>
 
           <div class="max-h-[26rem] overflow-y-auto divide-y divide-slate-50">
@@ -361,24 +504,39 @@
             <template x-if="cargado && items.length > 0">
               <div>
                 <template x-for="n in items" :key="n.id">
-                  <a :href="n.url_leer"
-                     class="flex items-start gap-3 px-4 py-3.5 hover:bg-slate-50 transition-colors"
-                     :class="n.leida ? '' : 'bg-indigo-50/25'">
-                    <div class="w-8 h-8 rounded-full flex items-center justify-center shrink-0 mt-0.5"
-                         :class="colorClasses(n.tipo)">
-                      <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round"
-                              :d="iconPaths[n.tipo] || 'M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z'"/>
+                  <div class="group relative flex items-stretch transition-colors"
+                       :class="n.leida ? 'hover:bg-slate-50' : 'bg-indigo-50/25 hover:bg-indigo-50/40'">
+                    <!-- Enlace principal -->
+                    <a :href="n.url_leer"
+                       class="flex items-start gap-3 px-4 py-3.5 flex-1 min-w-0 pr-8">
+                      <div class="w-8 h-8 rounded-full flex items-center justify-center shrink-0 mt-0.5"
+                           :class="colorClasses(n.tipo)">
+                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                          <path stroke-linecap="round" stroke-linejoin="round"
+                                :d="iconPaths[n.tipo] || 'M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z'"/>
+                        </svg>
+                      </div>
+                      <div class="flex-1 min-w-0">
+                        <p class="text-sm font-semibold text-slate-800 leading-tight" x-text="n.titulo"></p>
+                        <p class="text-xs text-slate-500 mt-0.5 leading-relaxed line-clamp-2" x-text="n.mensaje"></p>
+                        <p class="text-[11px] text-slate-400 mt-1 font-medium" x-text="'hace ' + n.hace"></p>
+                      </div>
+                      <span x-show="!n.leida"
+                            class="w-1.5 h-1.5 rounded-full bg-brand-600 shrink-0 mt-2 ml-1"></span>
+                    </a>
+                    <!-- Botón eliminar — visible al hacer hover -->
+                    <button @click.stop="eliminarNotif(n.id)"
+                            title="Eliminar"
+                            class="absolute right-2 top-1/2 -translate-y-1/2
+                                   opacity-0 group-hover:opacity-100
+                                   w-6 h-6 flex items-center justify-center rounded-md
+                                   text-slate-300 hover:text-red-500 hover:bg-red-50
+                                   transition-all duration-150">
+                      <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
                       </svg>
-                    </div>
-                    <div class="flex-1 min-w-0">
-                      <p class="text-sm font-semibold text-slate-800 leading-tight" x-text="n.titulo"></p>
-                      <p class="text-xs text-slate-500 mt-0.5 leading-relaxed line-clamp-2" x-text="n.mensaje"></p>
-                      <p class="text-[11px] text-slate-400 mt-1 font-medium" x-text="'hace ' + n.hace"></p>
-                    </div>
-                    <span x-show="!n.leida"
-                          class="w-1.5 h-1.5 rounded-full bg-brand-600 shrink-0 mt-2.5"></span>
-                  </a>
+                    </button>
+                  </div>
                 </template>
               </div>
             </template>
@@ -387,7 +545,7 @@
           <div class="px-4 py-3 border-t border-slate-100 bg-slate-50/60">
             <a href="{% url 'notificaciones_list' %}"
                class="text-xs text-brand-600 hover:text-brand-700 font-semibold transition-colors">
-              Ver todas las notificaciones →
+              Ver todas →
             </a>
           </div>
         </div>
