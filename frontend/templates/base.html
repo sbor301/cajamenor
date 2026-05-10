@@ -16,13 +16,28 @@
         extend: {
           colors: {
             brand: {
-              50:  '#eef2ff',
-              100: '#e0e7ff',
-              500: '#6366f1',
-              600: '#5b5ef6',
-              700: '#4f46e5',
-              800: '#3730a3',
-              900: '#312e81',
+              50:  '#f2f9eb',
+              100: '#e3f3d5',
+              200: '#c6e7aa',
+              300: '#a6d87e',
+              400: '#8ccb5e',
+              500: '#7ABA50',
+              600: '#62a03e',
+              700: '#4d852f',
+              800: '#3a6523',
+              900: '#28491a',
+            },
+            energy: {
+              50:  '#e6eef6',
+              100: '#ccdded',
+              200: '#99bbdb',
+              300: '#6698c8',
+              400: '#2d75b0',
+              500: '#05538D',
+              600: '#044578',
+              700: '#033661',
+              800: '#02284a',
+              900: '#011a33',
             }
           },
           fontFamily: {
@@ -42,28 +57,28 @@
     [x-cloak] { display: none !important; }
 
     :root {
-      /* Sidebar — Pearl & Iris (light) */
-      --sb-bg:          #eef1fb;
-      --sb-border:      rgba(99,102,241,0.1);
-      --sb-hover:       rgba(99,102,241,0.07);
-      --sb-active-bg:   rgba(99,102,241,0.11);
-      --sb-active-line: #5b5ef6;
-      --sb-text:        #5e6e8a;
-      --sb-text-hi:     #1a1f36;
-      --sb-section:     #94a3b8;
+      /* Sidebar — Azul Energía light tint */
+      --sb-bg:          #eaf2f9;
+      --sb-border:      rgba(5,83,141,0.10);
+      --sb-hover:       rgba(5,83,141,0.07);
+      --sb-active-bg:   rgba(122,186,80,0.12);
+      --sb-active-line: #7ABA50;
+      --sb-text:        #4a6a80;
+      --sb-text-hi:     #05538D;
+      --sb-section:     #7a9eb8;
       /* Layout */
       --topbar-bg:      #ffffff;
-      --topbar-border:  #e8eaef;
-      --content-bg:     #f4f6fc;
+      --topbar-border:  #ddeaf3;
+      --content-bg:     #f1f7fb;
       --card-bg:        #ffffff;
-      /* Accent */
-      --accent:         #5b5ef6;
-      --accent-hi:      #818cf8;
-      --accent-glow:    rgba(91,94,246,0.18);
+      /* Accent — Verde Solar */
+      --accent:         #7ABA50;
+      --accent-hi:      #8ccb5e;
+      --accent-glow:    rgba(122,186,80,0.22);
       /* Text */
-      --text-900: #0f172a;
-      --text-600: #475569;
-      --text-400: #94a3b8;
+      --text-900: #0d1e2d;
+      --text-600: #3a5a70;
+      --text-400: #7a9eb8;
     }
 
     body {
@@ -444,15 +459,15 @@
 
           <!-- Banner permiso navegador -->
           <div x-show="permisoBrowser === 'default'" x-cloak
-               class="flex items-center justify-between gap-2 px-4 py-2.5 bg-indigo-50 border-b border-indigo-100">
+               class="flex items-center justify-between gap-2 px-4 py-2.5 bg-brand-50 border-b border-brand-100">
             <div class="flex items-center gap-2 min-w-0">
-              <svg class="w-4 h-4 text-indigo-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <svg class="w-4 h-4 text-brand-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
               </svg>
-              <span class="text-xs text-indigo-700 font-medium truncate">Activa notificaciones del navegador</span>
+              <span class="text-xs text-brand-700 font-medium truncate">Activa notificaciones del navegador</span>
             </div>
             <button @click="solicitarPermiso()"
-                    class="shrink-0 px-2.5 py-1 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-lg transition-colors">
+                    class="shrink-0 px-2.5 py-1 bg-brand-600 hover:bg-brand-700 text-white text-xs font-semibold rounded-lg transition-colors">
               Activar
             </button>
           </div>
@@ -505,7 +520,7 @@
               <div>
                 <template x-for="n in items" :key="n.id">
                   <div class="group relative flex items-stretch transition-colors"
-                       :class="n.leida ? 'hover:bg-slate-50' : 'bg-indigo-50/25 hover:bg-indigo-50/40'">
+                       :class="n.leida ? 'hover:bg-slate-50' : 'bg-brand-50/25 hover:bg-brand-50/40'">
                     <!-- Enlace principal -->
                     <a :href="n.url_leer"
                        class="flex items-start gap-3 px-4 py-3.5 flex-1 min-w-0 pr-8">

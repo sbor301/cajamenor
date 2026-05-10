@@ -10,12 +10,12 @@
 
   <!-- Breadcrumb -->
   <nav class="flex items-center gap-1.5 text-xs text-slate-400">
-    <a href="{% url 'legalizacion_list' %}" class="hover:text-indigo-600 transition-colors">Legalizaciones</a>
+    <a href="{% url 'legalizacion_list' %}" class="hover:text-brand-600 transition-colors">Legalizaciones</a>
     <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
     </svg>
     <a href="{% url 'legalizacion_detail' leg.pk %}"
-       class="hover:text-indigo-600 transition-colors font-mono font-semibold">{{ leg.codigo }}</a>
+       class="hover:text-brand-600 transition-colors font-mono font-semibold">{{ leg.codigo }}</a>
     <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
     </svg>
@@ -49,14 +49,14 @@
                  value="{{ gasto.fecha|date:'Y-m-d' }}"
                  max="{% now 'Y-m-d' %}"
                  class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm
-                        focus:outline-none focus:ring-2 focus:ring-indigo-500"/>
+                        focus:outline-none focus:ring-2 focus:ring-[#7ABA50]"/>
         </div>
         <div>
           <label class="block text-sm font-medium text-slate-700 mb-1.5">Proveedor / Cliente <span class="text-red-500">*</span></label>
           <input type="text" name="cliente_proveedor" required maxlength="255"
                  value="{{ gasto.cliente_proveedor }}"
                  class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm
-                        focus:outline-none focus:ring-2 focus:ring-indigo-500"/>
+                        focus:outline-none focus:ring-2 focus:ring-[#7ABA50]"/>
         </div>
       </div>
 
@@ -67,14 +67,14 @@
           <input type="text" name="cedula_nit" required maxlength="32"
                  value="{{ gasto.cedula_nit }}"
                  class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm font-mono
-                        focus:outline-none focus:ring-2 focus:ring-indigo-500"/>
+                        focus:outline-none focus:ring-2 focus:ring-[#7ABA50]"/>
         </div>
         <div>
           <label class="block text-sm font-medium text-slate-700 mb-1.5">Número de Factura <span class="text-red-500">*</span></label>
           <input type="text" name="numero_factura" required maxlength="64"
                  value="{{ gasto.numero_factura }}"
                  class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm
-                        focus:outline-none focus:ring-2 focus:ring-indigo-500"/>
+                        focus:outline-none focus:ring-2 focus:ring-[#7ABA50]"/>
         </div>
       </div>
 
@@ -84,7 +84,7 @@
         <input type="text" name="centro_costos" required maxlength="64"
                value="{{ gasto.centro_costos }}"
                class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm
-                      focus:outline-none focus:ring-2 focus:ring-indigo-500"/>
+                      focus:outline-none focus:ring-2 focus:ring-[#7ABA50]"/>
       </div>
 
       <!-- ─── Valores ──────────────────────────────────────────────────── -->
@@ -104,7 +104,7 @@
                      placeholder="0"
                      @input="fmtBase($event)"
                      class="w-full pl-6 pr-3 py-2 rounded-lg border border-slate-300 text-sm
-                            focus:outline-none focus:ring-2 focus:ring-indigo-500"/>
+                            focus:outline-none focus:ring-2 focus:ring-[#7ABA50]"/>
               <input type="hidden" name="valor_base" x-ref="baseHidden"/>
             </div>
           </div>
@@ -115,7 +115,7 @@
             <select name="iva_porcentaje" x-ref="ivaPct"
                     @change="calcular()"
                     class="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm bg-white
-                           focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                           focus:outline-none focus:ring-2 focus:ring-[#7ABA50]">
               {% for pct, label in iva_opciones %}
               <option value="{{ pct }}"
                 {% if gasto.iva_porcentaje == pct %}selected{% endif %}>{{ label }}</option>
@@ -149,7 +149,7 @@
         <label class="block text-sm font-medium text-slate-700 mb-1.5">Observaciones</label>
         <textarea name="observaciones" rows="2"
                   class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm
-                         focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
+                         focus:outline-none focus:ring-2 focus:ring-[#7ABA50] resize-none"
                   >{{ gasto.observaciones|default:'' }}</textarea>
       </div>
 
@@ -158,13 +158,13 @@
         <label class="block text-sm font-medium text-slate-700 mb-1.5">Soporte / Factura</label>
         {% if gasto.archivo_factura %}
         <div class="flex items-center gap-3 mb-2 p-3 bg-slate-50 rounded-xl border border-slate-200">
-          <svg class="w-5 h-5 text-indigo-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <svg class="w-5 h-5 text-brand-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                   d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/>
           </svg>
           <span class="text-xs text-slate-600 truncate">
             <a href="{{ gasto.archivo_factura.url }}" target="_blank"
-               class="text-indigo-600 hover:underline">Ver soporte adjunto</a>
+               class="text-brand-600 hover:underline">Ver soporte adjunto</a>
           </span>
         </div>
         <p class="text-xs text-slate-400 mb-1.5">Sube un nuevo archivo para reemplazarlo.</p>
@@ -172,8 +172,8 @@
         <input type="file" name="archivo_factura" accept=".pdf,.jpg,.jpeg,.png"
                class="block w-full text-sm text-slate-600
                       file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0
-                      file:text-sm file:font-medium file:bg-indigo-50 file:text-indigo-700
-                      hover:file:bg-indigo-100 cursor-pointer"/>
+                      file:text-sm file:font-medium file:bg-brand-50 file:text-brand-700
+                      hover:file:bg-brand-100 cursor-pointer"/>
         <p class="text-xs text-slate-400 mt-1">JPG, PNG o PDF · Máx. 10 MB</p>
       </div>
     </div>
@@ -188,7 +188,7 @@
         Cancelar
       </a>
       <button type="submit"
-              class="inline-flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700
+              class="inline-flex items-center gap-2 px-5 py-2.5 bg-brand-600 hover:bg-brand-700
                      text-white text-sm font-semibold rounded-xl transition-colors">
         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>

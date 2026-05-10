@@ -31,13 +31,13 @@
         <input type="text" name="buscar" value="{{ buscar }}"
                placeholder="Buscar por empleado..."
                class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-900
-                      placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-indigo-300 transition-shadow"
+                      placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#7ABA50] focus:border-brand-300 transition-shadow"
                style="box-shadow:0 1px 3px rgba(0,0,0,0.05)"/>
       </div>
       <div>
         <select name="estado"
                 class="w-full sm:w-44 px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-700
-                       focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-indigo-300 bg-white transition-shadow"
+                       focus:outline-none focus:ring-2 focus:ring-[#7ABA50] focus:border-brand-300 bg-white transition-shadow"
                 style="box-shadow:0 1px 3px rgba(0,0,0,0.05)">
           <option value="">Todos los estados</option>
           {% for value, label in estados %}

@@ -11,8 +11,8 @@
   <!-- Datos del empleado y caja -->
   <div class="bg-white rounded-2xl border border-slate-100 p-6 space-y-5">
     <div class="flex items-center gap-3 pb-3 border-b border-slate-100">
-      <div class="w-9 h-9 rounded-xl bg-indigo-50 flex items-center justify-center">
-        <svg class="w-5 h-5 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <div class="w-9 h-9 rounded-xl bg-brand-50 flex items-center justify-center">
+        <svg class="w-5 h-5 text-brand-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
         </svg>
       </div>
@@ -32,19 +32,19 @@
         <label class="block text-xs font-medium text-slate-600 mb-1.5">Ciudad <span class="text-red-500">*</span></label>
         <input type="text" name="ciudad" required
                value="{{ form_data.ciudad|default:perfil.ciudad }}"
-               class="w-full px-3 py-2 border border-slate-100 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none text-sm">
+               class="w-full px-3 py-2 border border-slate-100 rounded-lg focus:ring-2 focus:ring-[#7ABA50] focus:border-brand-500 outline-none text-sm">
       </div>
       <div class="md:col-span-2">
         <label class="block text-xs font-medium text-slate-600 mb-1.5">Nombre completo <span class="text-red-500">*</span></label>
         <input type="text" name="nombre_completo" required
                value="{{ form_data.nombre_completo|default:perfil.nombre_completo }}"
-               class="w-full px-3 py-2 border border-slate-100 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none text-sm">
+               class="w-full px-3 py-2 border border-slate-100 rounded-lg focus:ring-2 focus:ring-[#7ABA50] focus:border-brand-500 outline-none text-sm">
       </div>
       <div>
         <label class="block text-xs font-medium text-slate-600 mb-1.5">Cédula <span class="text-red-500">*</span></label>
         <input type="text" name="cedula" required inputmode="numeric"
                value="{{ form_data.cedula|default:perfil.cedula }}"
-               class="w-full px-3 py-2 border border-slate-100 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none text-sm">
+               class="w-full px-3 py-2 border border-slate-100 rounded-lg focus:ring-2 focus:ring-[#7ABA50] focus:border-brand-500 outline-none text-sm">
       </div>
     </div>
   </div>
@@ -70,7 +70,7 @@
           <span class="absolute left-3 top-2 text-slate-400 text-sm">$</span>
           <input type="text" inputmode="numeric"
                  x-model="valorDisplay" @input="formatearValor()"
-                 class="w-full pl-7 pr-3 py-2 border border-slate-100 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none text-sm font-semibold">
+                 class="w-full pl-7 pr-3 py-2 border border-slate-100 rounded-lg focus:ring-2 focus:ring-[#7ABA50] focus:border-brand-500 outline-none text-sm font-semibold">
           <input type="hidden" name="valor_caja" :value="valorRaw">
         </div>
       </div>
@@ -78,12 +78,12 @@
         <label class="block text-xs font-medium text-slate-600 mb-1.5">Entidad bancaria <span class="text-red-500">*</span></label>
         <input type="text" name="entidad_bancaria" required
                value="{{ form_data.entidad_bancaria|default:perfil.entidad_bancaria }}"
-               class="w-full px-3 py-2 border border-slate-100 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none text-sm">
+               class="w-full px-3 py-2 border border-slate-100 rounded-lg focus:ring-2 focus:ring-[#7ABA50] focus:border-brand-500 outline-none text-sm">
       </div>
       <div>
         <label class="block text-xs font-medium text-slate-600 mb-1.5">Tipo de cuenta <span class="text-red-500">*</span></label>
         <select name="tipo_cuenta" required
-                class="w-full px-3 py-2 border border-slate-100 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none text-sm bg-white">
+                class="w-full px-3 py-2 border border-slate-100 rounded-lg focus:ring-2 focus:ring-[#7ABA50] focus:border-brand-500 outline-none text-sm bg-white">
           <option value="">Seleccionar…</option>
           {% for v, label in tipos_cuenta %}
             <option value="{{ v }}"
@@ -97,7 +97,7 @@
         <label class="block text-xs font-medium text-slate-600 mb-1.5">Cuenta N° <span class="text-red-500">*</span></label>
         <input type="text" name="numero_cuenta" required
                value="{{ form_data.numero_cuenta|default:perfil.numero_cuenta }}"
-               class="w-full px-3 py-2 border border-slate-100 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none text-sm">
+               class="w-full px-3 py-2 border border-slate-100 rounded-lg focus:ring-2 focus:ring-[#7ABA50] focus:border-brand-500 outline-none text-sm">
       </div>
     </div>
   </div>
@@ -130,7 +130,7 @@
       <div class="border-2 border-dashed border-slate-200 rounded-xl py-10 text-center">
         <p class="text-sm text-slate-500">Agrega al menos un ítem antes de enviar.</p>
         <button type="button" @click="agregarItem()"
-                class="mt-3 px-4 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-medium rounded-lg">
+                class="mt-3 px-4 py-1.5 bg-brand-600 hover:bg-brand-700 text-white text-xs font-medium rounded-lg">
           + Primer ítem
         </button>
       </div>
@@ -154,7 +154,7 @@
               <tr class="border-b border-slate-50 align-top">
                 <td class="py-2 px-2 pl-6">
                   <select name="item_tipo" x-model="item.tipo"
-                          class="w-full px-2 py-1.5 border border-slate-100 rounded-md text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none bg-white">
+                          class="w-full px-2 py-1.5 border border-slate-100 rounded-md text-sm focus:ring-2 focus:ring-[#7ABA50] focus:border-brand-500 outline-none bg-white">
                     <option value="">—</option>
                     {% for v, label in tipos_item %}
                       <option value="{{ v }}">{{ label }}</option>
@@ -171,7 +171,7 @@
                 </td>
                 <td class="py-2 px-2">
                   <select name="item_centro" x-model="item.cc"
-                          class="w-full px-2 py-1.5 border border-slate-100 rounded-md text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none bg-white">
+                          class="w-full px-2 py-1.5 border border-slate-100 rounded-md text-sm focus:ring-2 focus:ring-[#7ABA50] focus:border-brand-500 outline-none bg-white">
                     <option value="">—</option>
                     {% for c in centros %}
                       <option value="{{ c.id }}">{{ c.codigo }} — {{ c.nombre }}</option>
@@ -181,12 +181,12 @@
                 <td class="py-2 px-2">
                   <input type="number" name="item_cantidad" x-model="item.cantidad"
                          step="0.01" min="0" inputmode="decimal"
-                         class="w-full px-2 py-1.5 border border-slate-100 rounded-md text-sm text-right focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none">
+                         class="w-full px-2 py-1.5 border border-slate-100 rounded-md text-sm text-right focus:ring-2 focus:ring-[#7ABA50] focus:border-brand-500 outline-none">
                 </td>
                 <td class="py-2 px-2">
                   <input type="number" name="item_valor" x-model="item.valor"
                          step="1" min="0" inputmode="numeric"
-                         class="w-full px-2 py-1.5 border border-slate-100 rounded-md text-sm text-right focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none">
+                         class="w-full px-2 py-1.5 border border-slate-100 rounded-md text-sm text-right focus:ring-2 focus:ring-[#7ABA50] focus:border-brand-500 outline-none">
                 </td>
                 <td class="py-2 px-2 text-right font-semibold text-slate-900 tabular-nums" x-text="formatearMoneda(totalFila(item))"></td>
                 <td class="py-2 px-2 pr-6">
@@ -214,7 +214,7 @@
   <div class="bg-white rounded-2xl border border-slate-100 p-6">
     <label class="block text-sm font-semibold text-slate-900 mb-2">Observaciones generales</label>
     <textarea name="observaciones" rows="3"
-              class="w-full px-3 py-2 border border-slate-100 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none text-sm"
+              class="w-full px-3 py-2 border border-slate-100 rounded-lg focus:ring-2 focus:ring-[#7ABA50] focus:border-brand-500 outline-none text-sm"
               placeholder="Detalles adicionales sobre la solicitud (opcional)…">{{ form_data.observaciones }}</textarea>
   </div>
 
@@ -249,7 +249,7 @@
       Guardar borrador
     </button>
     <button type="submit" @click="accion = 'enviar'"
-            class="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition-colors">
+            class="px-5 py-2 bg-brand-600 hover:bg-brand-700 text-white text-sm font-medium rounded-lg transition-colors">
       Firmar y enviar a Gerencia Área
     </button>
   </div>

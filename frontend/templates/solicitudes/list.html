@@ -15,7 +15,7 @@
       <form method="get" class="flex items-center gap-2">
         <select name="estado"
                 onchange="this.form.submit()"
-                class="text-sm border border-slate-200 rounded-xl px-3 py-2 bg-white focus:ring-2 focus:ring-indigo-400 focus:border-indigo-300 outline-none text-slate-700 transition-shadow hover:border-slate-300"
+                class="text-sm border border-slate-200 rounded-xl px-3 py-2 bg-white focus:ring-2 focus:ring-[#7ABA50] focus:border-brand-300 outline-none text-slate-700 transition-shadow hover:border-slate-300"
                 style="box-shadow:0 1px 3px rgba(0,0,0,0.05)">
           <option value="">Todos los estados</option>
           {% for value, label in estados %}
@@ -24,7 +24,7 @@
         </select>
       </form>
       <a href="{% url 'solicitud_create' %}"
-         class="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition-colors">
+         class="inline-flex items-center gap-2 px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white text-sm font-medium rounded-lg transition-colors">
         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
         </svg>
@@ -62,7 +62,7 @@
                 {% elif e == 'PEND_AREA' %}bg-amber-50 text-amber-700
                 {% elif e == 'PEND_CORP' %}bg-blue-50 text-blue-700
                 {% elif e == 'APROBADA' %}bg-emerald-50 text-emerald-700
-                {% elif e == 'DESEMBOLSADA' %}bg-indigo-50 text-indigo-700
+                {% elif e == 'DESEMBOLSADA' %}bg-brand-50 text-brand-700
                 {% elif e == 'LEGALIZADA' %}bg-teal-50 text-teal-700
                 {% elif e == 'RECHAZADA' %}bg-red-50 text-red-700
                 {% endif %}">
@@ -103,7 +103,7 @@
     <p class="text-base font-semibold text-slate-700">Sin solicitudes</p>
     <p class="text-sm text-slate-400 mt-1">Crea tu primera solicitud de caja para empezar.</p>
     <a href="{% url 'solicitud_create' %}"
-       class="inline-flex items-center gap-2 mt-5 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition-colors">
+       class="inline-flex items-center gap-2 mt-5 px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white text-sm font-medium rounded-lg transition-colors">
       Nueva solicitud
     </a>
   </div>

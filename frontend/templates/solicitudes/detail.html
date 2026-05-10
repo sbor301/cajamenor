@@ -20,7 +20,7 @@
           {% elif e == 'PEND_AREA' %}bg-amber-50 text-amber-700
           {% elif e == 'PEND_CORP' %}bg-blue-50 text-blue-700
           {% elif e == 'APROBADA' %}bg-emerald-50 text-emerald-700
-          {% elif e == 'DESEMBOLSADA' %}bg-indigo-50 text-indigo-700
+          {% elif e == 'DESEMBOLSADA' %}bg-brand-50 text-brand-700
           {% elif e == 'LEGALIZADA' %}bg-teal-50 text-teal-700
           {% elif e == 'RECHAZADA' %}bg-red-50 text-red-700
           {% endif %}">
@@ -184,16 +184,16 @@
   </div>
 
   {% if sol.fecha_desembolso %}
-  <div class="bg-indigo-50 border border-indigo-200 rounded-2xl p-5">
+  <div class="bg-brand-50 border border-brand-200 rounded-2xl p-5">
     <div class="flex items-start gap-3">
-      <svg class="w-5 h-5 text-indigo-600 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <svg class="w-5 h-5 text-brand-600 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
       </svg>
       <div class="flex-1">
-        <p class="text-sm font-semibold text-indigo-900">Desembolso registrado</p>
-        <p class="text-sm text-indigo-700 mt-1">Fondos consignados el <strong>{{ sol.fecha_desembolso|date:"d M Y" }}</strong>.</p>
+        <p class="text-sm font-semibold text-brand-900">Desembolso registrado</p>
+        <p class="text-sm text-brand-700 mt-1">Fondos consignados el <strong>{{ sol.fecha_desembolso|date:"d M Y" }}</strong>.</p>
         {% if legalizacion and legalizacion.fecha_cierre %}
-        <p class="text-sm text-indigo-700 mt-0.5">
+        <p class="text-sm text-brand-700 mt-0.5">
           Plazo máximo de legalización:
           <strong>{{ legalizacion.fecha_cierre|date:"d M Y" }}</strong>
           (8 días hábiles).
@@ -214,7 +214,7 @@
       {% csrf_token %}
       <p class="text-sm font-medium text-slate-900">Firmar y enviar a Gerencia Área</p>
       {% include "partials/firma_pad.html" with campo="firma_empleado" label="Tu firma" requerida=True firma_guardada_url=firma_guardada_url %}
-      <button type="submit" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg">
+      <button type="submit" class="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white text-sm font-medium rounded-lg">
         Enviar a Gerencia Área
       </button>
     </form>
@@ -256,13 +256,13 @@
     {% endif %}
 
     {% if puede_desembolsar %}
-    <form method="post" action="{% url 'solicitud_desembolsar' sol.pk %}" class="space-y-3 border border-indigo-200 bg-indigo-50/30 rounded-xl p-4">
+    <form method="post" action="{% url 'solicitud_desembolsar' sol.pk %}" class="space-y-3 border border-brand-200 bg-brand-50/30 rounded-xl p-4">
       {% csrf_token %}
-      <p class="text-sm font-medium text-indigo-900">Registrar desembolso</p>
-      <p class="text-xs text-indigo-700">El plazo de legalización (8 días hábiles) se calcula desde esta fecha.</p>
+      <p class="text-sm font-medium text-brand-900">Registrar desembolso</p>
+      <p class="text-xs text-brand-700">El plazo de legalización (8 días hábiles) se calcula desde esta fecha.</p>
       <input type="date" name="fecha_desembolso" required
-             class="px-3 py-2 border border-indigo-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none bg-white">
-      <button type="submit" class="ml-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg">
+             class="px-3 py-2 border border-brand-200 rounded-lg text-sm focus:ring-2 focus:ring-[#7ABA50] focus:border-brand-500 outline-none bg-white">
+      <button type="submit" class="ml-2 px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white text-sm font-medium rounded-lg">
         Marcar como desembolsada
       </button>
     </form>

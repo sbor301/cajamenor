@@ -9,14 +9,14 @@
 
   {# ── Greeting ──────────────────────────────────────────────────────────── #}
   <div class="rounded-2xl px-6 py-5 flex items-center justify-between gap-4 overflow-hidden relative"
-       style="background:linear-gradient(135deg,#5b5ef6 0%,#7c3aed 100%);box-shadow:0 4px 24px rgba(91,94,246,0.22)">
+       style="background:linear-gradient(135deg,#05538D 0%,#2d75b0 100%);box-shadow:0 4px 24px rgba(5,83,141,0.22)">
     <!-- Subtle inner pattern -->
     <div class="absolute inset-0 pointer-events-none"
          style="background-image:radial-gradient(circle at 80% 50%,rgba(255,255,255,0.08) 0%,transparent 60%),linear-gradient(rgba(255,255,255,0.04) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.04) 1px,transparent 1px);background-size:auto,48px 48px,48px 48px"></div>
     <div class="relative z-10">
-      <p class="text-indigo-200 text-xs font-medium tracking-widest uppercase mb-0.5">Bienvenido de vuelta</p>
+      <p class="text-energy-200 text-xs font-medium tracking-widest uppercase mb-0.5">Bienvenido de vuelta</p>
       <h1 class="text-white text-xl font-display font-bold leading-tight">{{ user|nombre_display }}</h1>
-      <p class="text-indigo-200/80 text-sm mt-1">
+      <p class="text-energy-200/80 text-sm mt-1">
         {% now "l, j \d\e F \d\e Y" %}
       </p>
     </div>
@@ -40,19 +40,19 @@
     {% for accion in acciones %}
     <a href="{% url accion.url %}"
        class="flex items-center gap-3 px-4 py-3 rounded-xl border
-              {% if accion.color == 'amber' %}bg-amber-50 border-amber-200 hover:bg-amber-100{% elif accion.color == 'orange' %}bg-orange-50 border-orange-200 hover:bg-orange-100{% else %}bg-violet-50 border-violet-200 hover:bg-violet-100{% endif %}
+              {% if accion.color == 'amber' %}bg-amber-50 border-amber-200 hover:bg-amber-100{% elif accion.color == 'orange' %}bg-orange-50 border-orange-200 hover:bg-orange-100{% else %}bg-energy-50 border-energy-200 hover:bg-energy-100{% endif %}
               transition-colors">
       <div class="shrink-0 w-8 h-8 rounded-lg flex items-center justify-center
-                  {% if accion.color == 'amber' %}bg-amber-200 text-amber-700{% elif accion.color == 'orange' %}bg-orange-200 text-orange-700{% else %}bg-violet-200 text-violet-700{% endif %}">
+                  {% if accion.color == 'amber' %}bg-amber-200 text-amber-700{% elif accion.color == 'orange' %}bg-orange-200 text-orange-700{% else %}bg-energy-200 text-energy-600{% endif %}">
         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
         </svg>
       </div>
       <p class="text-sm font-medium
-                {% if accion.color == 'amber' %}text-amber-800{% elif accion.color == 'orange' %}text-orange-800{% else %}text-violet-800{% endif %}
+                {% if accion.color == 'amber' %}text-amber-800{% elif accion.color == 'orange' %}text-orange-800{% else %}text-energy-700{% endif %}
                 flex-1">{{ accion.texto }}</p>
       <svg class="w-4 h-4
-                  {% if accion.color == 'amber' %}text-amber-400{% elif accion.color == 'orange' %}text-orange-400{% else %}text-violet-400{% endif %}" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  {% if accion.color == 'amber' %}text-amber-400{% elif accion.color == 'orange' %}text-orange-400{% else %}text-energy-400{% endif %}" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
       </svg>
     </a>
@@ -64,12 +64,12 @@
   <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
 
     {# Solicitudes activas #}
-    <div class="bg-white rounded-2xl border border-slate-100 p-5 hover:border-indigo-200 hover:shadow-md transition-all group relative overflow-hidden"
+    <div class="bg-white rounded-2xl border border-slate-100 p-5 hover:border-brand-200 hover:shadow-md transition-all group relative overflow-hidden"
          style="box-shadow:0 1px 4px rgba(0,0,0,0.04)">
-      <div class="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-indigo-400 to-indigo-500 opacity-0 group-hover:opacity-100 transition-opacity rounded-t-2xl"></div>
+      <div class="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-brand-400 to-brand-500 opacity-0 group-hover:opacity-100 transition-opacity rounded-t-2xl"></div>
       <div class="flex items-start justify-between mb-3">
-        <div class="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center group-hover:bg-indigo-100 transition-colors">
-          <svg class="w-5 h-5 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <div class="w-10 h-10 rounded-xl bg-brand-50 flex items-center justify-center group-hover:bg-brand-100 transition-colors">
+          <svg class="w-5 h-5 text-brand-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
           </svg>
         </div>
@@ -82,7 +82,7 @@
       <p class="text-2xl font-bold text-slate-900 leading-none">{{ stats_sol.total|default:0 }}</p>
       <p class="text-xs text-slate-500 mt-1">Solicitudes de caja</p>
       {% if stats_sol.monto_total %}
-      <p class="text-xs text-indigo-600 font-medium mt-1.5">${{ stats_sol.monto_total|cop }}</p>
+      <p class="text-xs text-brand-600 font-medium mt-1.5">${{ stats_sol.monto_total|cop }}</p>
       {% endif %}
     </div>
 
@@ -103,17 +103,17 @@
     </div>
 
     {# Legalizaciones #}
-    <div class="bg-white rounded-2xl border border-slate-100 p-5 hover:border-violet-200 hover:shadow-md transition-all group relative overflow-hidden"
+    <div class="bg-white rounded-2xl border border-slate-100 p-5 hover:border-energy-200 hover:shadow-md transition-all group relative overflow-hidden"
          style="box-shadow:0 1px 4px rgba(0,0,0,0.04)">
-      <div class="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-violet-400 to-purple-400 opacity-0 group-hover:opacity-100 transition-opacity rounded-t-2xl"></div>
+      <div class="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-energy-400 to-energy-500 opacity-0 group-hover:opacity-100 transition-opacity rounded-t-2xl"></div>
       <div class="flex items-start justify-between mb-3">
-        <div class="w-10 h-10 rounded-xl bg-violet-50 flex items-center justify-center group-hover:bg-violet-100 transition-colors">
-          <svg class="w-5 h-5 text-violet-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <div class="w-10 h-10 rounded-xl bg-energy-50 flex items-center justify-center group-hover:bg-energy-100 transition-colors">
+          <svg class="w-5 h-5 text-energy-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
           </svg>
         </div>
         {% if stats_leg.enviadas %}
-        <span class="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-700">
+        <span class="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-energy-100 text-energy-600">
           {{ stats_leg.enviadas }} env.
         </span>
         {% endif %}
@@ -121,7 +121,7 @@
       <p class="text-2xl font-bold text-slate-900 leading-none">{{ stats_leg.total|default:0 }}</p>
       <p class="text-xs text-slate-500 mt-1">Legalizaciones</p>
       {% if stats_leg.monto_total %}
-      <p class="text-xs text-violet-600 font-medium mt-1.5">${{ stats_leg.monto_total|cop }}</p>
+      <p class="text-xs text-energy-500 font-medium mt-1.5">${{ stats_leg.monto_total|cop }}</p>
       {% endif %}
     </div>
 
@@ -172,7 +172,7 @@
         <h2 class="text-sm font-semibold text-slate-800">Pipeline de Solicitudes de Caja</h2>
         <p class="text-xs text-slate-400 mt-0.5">Distribución actual por estado</p>
       </div>
-      <a href="{% url 'solicitud_list' %}" class="text-xs text-indigo-600 hover:text-indigo-700 font-medium">Ver todas →</a>
+      <a href="{% url 'solicitud_list' %}" class="text-xs text-brand-600 hover:text-brand-700 font-medium">Ver todas →</a>
     </div>
     <div class="px-6 py-5">
       {# Pipeline steps #}
@@ -239,10 +239,10 @@
         {% with count=stats_sol.legalizadas|default:0 %}
         <div class="flex flex-col items-center text-center relative z-10">
           <div class="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold mb-2 transition-all
-                      {% if count > 0 %}bg-indigo-600 text-white ring-2 ring-white ring-offset-1 shadow-sm shadow-indigo-200{% else %}bg-slate-100 text-slate-400{% endif %}">
+                      {% if count > 0 %}bg-brand-600 text-white ring-2 ring-white ring-offset-1 shadow-sm shadow-brand-200{% else %}bg-slate-100 text-slate-400{% endif %}">
             {{ count }}
           </div>
-          <p class="text-[11px] font-medium {% if count > 0 %}text-indigo-700{% else %}text-slate-400{% endif %} leading-tight">Legalizada</p>
+          <p class="text-[11px] font-medium {% if count > 0 %}text-brand-700{% else %}text-slate-400{% endif %} leading-tight">Legalizada</p>
         </div>
         {% endwith %}
       </div>
@@ -264,7 +264,7 @@
         <h2 class="text-sm font-semibold text-slate-800">Estado de Legalizaciones</h2>
         <p class="text-xs text-slate-400 mt-0.5">Resumen por estado</p>
       </div>
-      <a href="{% url 'legalizacion_list' %}" class="text-xs text-indigo-600 hover:text-indigo-700 font-medium">Ver todas →</a>
+      <a href="{% url 'legalizacion_list' %}" class="text-xs text-brand-600 hover:text-brand-700 font-medium">Ver todas →</a>
     </div>
     <div class="px-6 py-5 grid grid-cols-2 sm:grid-cols-4 gap-4">
       {% with total=stats_leg.total|default:1 %}
@@ -327,7 +327,7 @@
     <div class="flex items-center justify-between border-b border-slate-100 px-2">
       <div class="flex">
         <button @click="tab = 'solicitudes'"
-                :class="tab === 'solicitudes' ? 'text-indigo-600 border-indigo-600' : 'text-slate-500 border-transparent hover:text-slate-700'"
+                :class="tab === 'solicitudes' ? 'text-brand-600 border-brand-600' : 'text-slate-500 border-transparent hover:text-slate-700'"
                 class="px-4 py-3.5 text-sm font-medium border-b-2 -mb-px transition-colors flex items-center gap-1.5">
           <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
@@ -335,7 +335,7 @@
           Solicitudes
         </button>
         <button @click="tab = 'legalizaciones'"
-                :class="tab === 'legalizaciones' ? 'text-indigo-600 border-indigo-600' : 'text-slate-500 border-transparent hover:text-slate-700'"
+                :class="tab === 'legalizaciones' ? 'text-brand-600 border-brand-600' : 'text-slate-500 border-transparent hover:text-slate-700'"
                 class="px-4 py-3.5 text-sm font-medium border-b-2 -mb-px transition-colors flex items-center gap-1.5">
           <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
@@ -353,13 +353,13 @@
         <a href="{% url 'solicitud_detail' sol.pk %}"
            class="flex items-center justify-between px-6 py-4 hover:bg-slate-50 transition-colors">
           <div class="flex items-center gap-3 min-w-0">
-            <div class="w-9 h-9 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-bold text-xs shrink-0">
+            <div class="w-9 h-9 rounded-full bg-brand-100 flex items-center justify-center text-brand-700 font-bold text-xs shrink-0">
               {{ sol.solicitante|nombre_display|iniciales }}
             </div>
             <div class="min-w-0">
               <div class="flex items-center gap-2 flex-wrap">
                 <p class="text-sm font-medium text-slate-800 truncate">{{ sol.solicitante|nombre_display }}</p>
-                <span class="px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-600 text-xs font-mono font-semibold shrink-0">{{ sol.numero_caja }}</span>
+                <span class="px-1.5 py-0.5 rounded bg-brand-50 text-brand-600 text-xs font-mono font-semibold shrink-0">{{ sol.numero_caja }}</span>
               </div>
               <p class="text-xs text-slate-400">{{ sol.fecha_solicitud|date:"d M Y" }}</p>
             </div>
@@ -380,7 +380,7 @@
             {% elif sol.estado == 'DESEMBOLSADA' %}
             <span class="px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700">Desembolsada</span>
             {% elif sol.estado == 'LEGALIZADA' %}
-            <span class="px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-700">Legalizada</span>
+            <span class="px-2 py-0.5 rounded-full text-xs font-medium bg-brand-100 text-brand-700">Legalizada</span>
             {% elif sol.estado == 'RECHAZADA' %}
             <span class="px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700">Rechazada</span>
             {% endif %}
@@ -392,7 +392,7 @@
         {% endfor %}
       </div>
       <div class="px-6 py-3 border-t border-slate-50 bg-slate-50/50">
-        <a href="{% url 'solicitud_list' %}" class="text-xs text-indigo-600 hover:text-indigo-700 font-medium">Ver todas las solicitudes →</a>
+        <a href="{% url 'solicitud_list' %}" class="text-xs text-brand-600 hover:text-brand-700 font-medium">Ver todas las solicitudes →</a>
       </div>
       {% else %}
       <div class="px-6 py-12 text-center">
@@ -403,7 +403,7 @@
         </div>
         <p class="text-sm font-medium text-slate-600 mb-1">No hay solicitudes aún</p>
         <p class="text-xs text-slate-400 mb-4">Crea tu primera solicitud de caja menor</p>
-        <a href="{% url 'solicitud_create' %}" class="inline-flex items-center gap-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-xl transition-colors">
+        <a href="{% url 'solicitud_create' %}" class="inline-flex items-center gap-1.5 px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white text-sm font-medium rounded-xl transition-colors">
           <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
           </svg>
@@ -421,13 +421,13 @@
         <a href="{% url 'legalizacion_detail' leg.pk %}"
            class="flex items-center justify-between px-6 py-4 hover:bg-slate-50 transition-colors">
           <div class="flex items-center gap-3 min-w-0">
-            <div class="w-9 h-9 rounded-full bg-violet-100 flex items-center justify-center text-violet-700 font-bold text-xs shrink-0">
+            <div class="w-9 h-9 rounded-full bg-energy-100 flex items-center justify-center text-energy-600 font-bold text-xs shrink-0">
               {{ leg.elaboro|nombre_display|iniciales }}
             </div>
             <div class="min-w-0">
               <div class="flex items-center gap-2 flex-wrap">
                 <p class="text-sm font-medium text-slate-800 truncate">{{ leg.elaboro|nombre_display }}</p>
-                <span class="px-1.5 py-0.5 rounded bg-violet-50 text-violet-600 text-xs font-mono font-semibold shrink-0">{{ leg.codigo }}</span>
+                <span class="px-1.5 py-0.5 rounded bg-energy-50 text-energy-500 text-xs font-mono font-semibold shrink-0">{{ leg.codigo }}</span>
               </div>
               <p class="text-xs text-slate-400">{{ leg.fecha_solicitud|date:"d M Y" }}</p>
             </div>
@@ -448,7 +448,7 @@
         {% endfor %}
       </div>
       <div class="px-6 py-3 border-t border-slate-50 bg-slate-50/50">
-        <a href="{% url 'legalizacion_list' %}" class="text-xs text-indigo-600 hover:text-indigo-700 font-medium">Ver todas las legalizaciones →</a>
+        <a href="{% url 'legalizacion_list' %}" class="text-xs text-brand-600 hover:text-brand-700 font-medium">Ver todas las legalizaciones →</a>
       </div>
       {% else %}
       <div class="px-6 py-12 text-center">
