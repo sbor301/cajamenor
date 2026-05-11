@@ -9,6 +9,8 @@ from django.core.validators import MinValueValidator
 from django.db import models
 from django.db.models import Sum
 
+from .validators import validar_archivo_factura
+
 
 # ── Validadores reutilizables ─────────────────────────────────────────────────
 
@@ -506,7 +508,8 @@ class Gasto(models.Model):
         null=True,
         blank=True,
         verbose_name="Archivo factura",
-        help_text="Foto (JPG/PNG) o PDF de la factura",
+        help_text="Foto (JPG/PNG/WEBP) o PDF de la factura — máx 10 MB",
+        validators=[validar_archivo_factura],
     )
     observaciones = models.TextField(
         null=True,

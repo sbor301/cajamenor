@@ -316,6 +316,12 @@ def legalizacion_aprobar(request, pk):
         messages.error(request, "Solo se pueden aprobar legalizaciones en estado Enviado.")
         return redirect("legalizacion_detail", pk=pk)
 
+    # Segregación de funciones: un aprobador no puede aprobar lo que él mismo elaboró.
+    # Superusuario mantiene la capacidad de override (admin de respaldo).
+    if leg.elaboro_id == user.pk and not user.is_superuser:
+        messages.error(request, "No puedes aprobar tu propia legalización.")
+        return redirect("legalizacion_detail", pk=pk)
+
     with transaction.atomic():
         leg.estado = Legalizacion.Estado.APROBADO
         leg.aprobado_por = user
@@ -359,6 +365,11 @@ def legalizacion_rechazar(request, pk):
     leg = get_object_or_404(Legalizacion, pk=pk)
     if leg.estado != Legalizacion.Estado.ENVIADO:
         messages.error(request, "Solo se pueden rechazar legalizaciones en estado Enviado.")
+        return redirect("legalizacion_detail", pk=pk)
+
+    # Segregación de funciones (ver legalizacion_aprobar).
+    if leg.elaboro_id == user.pk and not user.is_superuser:
+        messages.error(request, "No puedes rechazar tu propia legalización.")
         return redirect("legalizacion_detail", pk=pk)
 
     leg.estado = Legalizacion.Estado.RECHAZADO
@@ -492,6 +503,7 @@ def ocr_factura(request):
 
 
 @login_required
+@require_POST
 def legalizacion_enviar(request, pk):
     leg = get_object_or_404(Legalizacion, pk=pk, elaboro=request.user)
     if leg.estado in (Legalizacion.Estado.BORRADOR, Legalizacion.Estado.DEVUELTO):
@@ -536,6 +548,11 @@ def legalizacion_devolver(request, pk):
     leg = get_object_or_404(Legalizacion, pk=pk)
     if leg.estado != Legalizacion.Estado.ENVIADO:
         messages.error(request, "Solo se pueden devolver legalizaciones en estado Enviado.")
+        return redirect("legalizacion_detail", pk=pk)
+
+    # Segregación de funciones (ver legalizacion_aprobar).
+    if leg.elaboro_id == user.pk and not user.is_superuser:
+        messages.error(request, "No puedes devolver tu propia legalización.")
         return redirect("legalizacion_detail", pk=pk)
 
     comentario = request.POST.get("comentario", "").strip()

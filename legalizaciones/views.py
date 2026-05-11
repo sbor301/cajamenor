@@ -1,3 +1,6 @@
+import logging
+from datetime import date
+
 from django.db import transaction
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters, status, viewsets
@@ -5,6 +8,8 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 
 from .models import Gasto, Legalizacion
+
+audit = logging.getLogger("cajamenor.audit")
 from .permissions import (
     EsAprobador,
     EsPropietarioOAprobador,
@@ -98,22 +103,76 @@ class LegalizacionViewSet(viewsets.ModelViewSet):
             status=status.HTTP_201_CREATED,
         )
 
+    # ── Helpers de aprobación ─────────────────────────────────────────────
+    @staticmethod
+    def _validar_transicion_aprobacion(legalizacion, usuario, motivo):
+        """Reglas comunes a aprobar/rechazar/devolver:
+        - Estado origen debe ser ENVIADO.
+        - Segregación de funciones: el aprobador no puede ser el elaborador
+          (salvo superusuario, que mantiene la capacidad de override).
+        - Motivo obligatorio (mínimo 3 caracteres tras strip).
+        Devuelve (ok, error_response).
+        """
+        if legalizacion.estado != Legalizacion.Estado.ENVIADO:
+            return False, Response(
+                {"detail": "Solo se pueden procesar legalizaciones en estado Enviado."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if legalizacion.elaboro_id == usuario.pk and not usuario.is_superuser:
+            return False, Response(
+                {"detail": "No puedes aprobar o rechazar tu propia legalización."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        if not motivo or len(motivo) < 3:
+            return False, Response(
+                {"detail": "El motivo es obligatorio (mínimo 3 caracteres)."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        return True, None
+
     @action(detail=True, methods=["post"])
     def aprobar(self, request, pk=None):
-        """Solo Aprobadores. Cambia estado a APROBADO y registra quién aprobó."""
+        """Solo Aprobadores. Cambia estado a APROBADO y registra quién aprobó.
+
+        Valida estado origen, exige motivo, bloquea auto-aprobación y guarda
+        en una transacción para mantener consistencia.
+        """
         legalizacion = self.get_object()
-        legalizacion.estado = Legalizacion.Estado.APROBADO
-        legalizacion.aprobado_por = request.user
-        legalizacion.save()
+        motivo = (request.data.get("motivo") or "").strip()
+        ok, err = self._validar_transicion_aprobacion(legalizacion, request.user, motivo)
+        if not ok:
+            return err
+
+        with transaction.atomic():
+            legalizacion.estado = Legalizacion.Estado.APROBADO
+            legalizacion.aprobado_por = request.user
+            legalizacion.motivo_aprobador = motivo
+            legalizacion.fecha_aprobacion = date.today()
+            legalizacion.save()
+        audit.info(
+            "legalizacion.aprobar pk=%s usuario=%s",
+            legalizacion.pk, request.user.username,
+        )
         return Response(LegalizacionSerializer(legalizacion).data)
 
     @action(detail=True, methods=["post"])
     def rechazar(self, request, pk=None):
-        """Solo Aprobadores. Cambia estado a RECHAZADO."""
+        """Solo Aprobadores. Cambia estado a RECHAZADO con motivo obligatorio."""
         legalizacion = self.get_object()
-        legalizacion.estado = Legalizacion.Estado.RECHAZADO
-        legalizacion.aprobado_por = request.user
-        legalizacion.save()
+        motivo = (request.data.get("motivo") or "").strip()
+        ok, err = self._validar_transicion_aprobacion(legalizacion, request.user, motivo)
+        if not ok:
+            return err
+
+        with transaction.atomic():
+            legalizacion.estado = Legalizacion.Estado.RECHAZADO
+            legalizacion.aprobado_por = request.user
+            legalizacion.motivo_aprobador = motivo
+            legalizacion.save()
+        audit.info(
+            "legalizacion.rechazar pk=%s usuario=%s",
+            legalizacion.pk, request.user.username,
+        )
         return Response(LegalizacionSerializer(legalizacion).data)
 
 

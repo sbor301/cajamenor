@@ -77,10 +77,10 @@
       overflow: hidden;
     }
 
-    /* Dot mandala canvas */
+    /* Dot mandala canvas — centered in right 55% of left panel */
     .mandala-wrap {
       position: absolute;
-      top: 50%; left: 48%;
+      top: 50%; left: 62%;
       transform: translate(-50%, -50%);
       pointer-events: none;
       opacity: 0.95;
@@ -140,7 +140,7 @@
     }
 
     /* ── Hero ── */
-    .hero { position:relative; z-index:10; }
+    .hero { position:relative; z-index:10; max-width:360px; }
     .hero-title {
       font-family: 'DM Serif Display', serif;
       font-size: clamp(2.2rem,4vw,3.4rem);
@@ -151,11 +151,11 @@
     .hero-title em           { font-style:italic; color:var(--green); }
     .hero-desc {
       font-size:.875rem; color:var(--text-dim);
-      line-height:1.8; max-width:370px; font-weight:400;
+      line-height:1.8; max-width:310px; font-weight:400;
     }
 
     /* ── Chips ── */
-    .chips { display:flex; gap:10px; position:relative; z-index:10; flex-wrap:wrap; }
+    .chips { display:flex; gap:10px; position:relative; z-index:10; flex-wrap:wrap; max-width:360px; }
     .chip {
       background: rgba(255,255,255,0.88);
       border-radius:14px; padding:12px 16px;

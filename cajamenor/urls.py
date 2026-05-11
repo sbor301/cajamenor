@@ -31,4 +31,10 @@ urlpatterns = [
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
     path("api/docs/", SpectacularSwaggerView.as_view(url_name="schema"), name="swagger-ui"),
     path("api/redoc/", SpectacularRedocView.as_view(url_name="schema"), name="redoc"),
-] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+]
+
+# Servir MEDIA solo en desarrollo. En producción debe servirse desde el
+# reverse-proxy (Nginx) con `Content-Disposition: attachment` y
+# `X-Content-Type-Options: nosniff` para evitar XSS desde archivos subidos.
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

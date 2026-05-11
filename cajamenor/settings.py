@@ -9,9 +9,18 @@ env = environ.Env(
 )
 environ.Env.read_env(BASE_DIR / ".env")
 
-SECRET_KEY = env("DJANGO_SECRET_KEY", default="change-me-in-production")
-DEBUG = env("DEBUG", default=True)
-ALLOWED_HOSTS = env.list("ALLOWED_HOSTS", default=["*"])
+# SECRET_KEY: sin default → si falta en .env el arranque falla cerrado.
+# En local, define DJANGO_SECRET_KEY en .env (ver .env.example).
+SECRET_KEY = env("DJANGO_SECRET_KEY")
+
+# DEBUG: por defecto False. En local, .env lo pone en True explícitamente.
+DEBUG = env.bool("DEBUG", default=False)
+
+# ALLOWED_HOSTS: en local, .env los define. Default vacío para fallar cerrado.
+ALLOWED_HOSTS = env.list(
+    "ALLOWED_HOSTS",
+    default=["localhost", "127.0.0.1", "[::1]"] if DEBUG else [],
+)
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -108,13 +117,69 @@ REST_FRAMEWORK = {
 }
 
 SIMPLE_JWT = {
-    "ACCESS_TOKEN_LIFETIME": timedelta(hours=8),
+    # Reducido de 8h → 1h. Refresh de 1 día permite re-emitir sin re-login.
+    "ACCESS_TOKEN_LIFETIME": timedelta(hours=1),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=1),
     "ROTATE_REFRESH_TOKENS": True,
     "BLACKLIST_AFTER_ROTATION": False,
     "AUTH_HEADER_TYPES": ("Bearer",),
     "USER_ID_FIELD": "id",
     "USER_ID_CLAIM": "user_id",
+}
+
+# ── Validadores de contraseña ────────────────────────────────────────────
+AUTH_PASSWORD_VALIDATORS = [
+    {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
+    {
+        "NAME": "django.contrib.auth.password_validation.MinimumLengthValidator",
+        "OPTIONS": {"min_length": 10},
+    },
+    {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
+    {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
+]
+
+# ── Cookies / cabeceras seguras (siempre activas, no rompen local) ───────
+SESSION_COOKIE_HTTPONLY = True
+CSRF_COOKIE_HTTPONLY = True
+SESSION_COOKIE_SAMESITE = "Lax"
+CSRF_COOKIE_SAMESITE = "Lax"
+X_FRAME_OPTIONS = "DENY"
+SECURE_CONTENT_TYPE_NOSNIFF = True
+SECURE_REFERRER_POLICY = "same-origin"
+
+# ── Hardening solo en producción (HTTPS obligatorio, HSTS) ──────────────
+if not DEBUG:
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+    SECURE_SSL_REDIRECT = True
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_HSTS_SECONDS = 31_536_000  # 1 año
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
+
+# ── Logging ──────────────────────────────────────────────────────────────
+# En desarrollo escribe a consola. En prod, agregar handler de archivo/Syslog.
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "verbose": {
+            "format": "[{asctime}] {levelname} {name}: {message}",
+            "style": "{",
+        },
+    },
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "formatter": "verbose",
+        },
+    },
+    "loggers": {
+        "django.security": {"handlers": ["console"], "level": "WARNING", "propagate": False},
+        "django.request":  {"handlers": ["console"], "level": "WARNING", "propagate": False},
+        # Logger de auditoría de negocio (auth, aprobaciones, eliminaciones)
+        "cajamenor.audit": {"handlers": ["console"], "level": "INFO", "propagate": False},
+    },
 }
 
 LOGIN_URL = "/"
